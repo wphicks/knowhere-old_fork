@@ -39,8 +39,8 @@
 namespace knowhere {
 
 namespace detail {
-using raft_ivf_flat_index = raft::neighbors::ivf_flat::index<float, std::uint64_t>;
-using raft_ivf_pq_index = raft::neighbors::ivf_pq::index<std::uint64_t>;
+using raft_ivf_flat_index = raft::neighbors::ivf_flat::index<float, std::int64_t>;
+using raft_ivf_pq_index = raft::neighbors::ivf_pq::index<std::int64_t>;
 
 // TODO(wphicks): Replace this with version from RAFT once merged
 struct device_setter {
@@ -183,7 +183,7 @@ class RaftIvfIndexNode : public IndexNode {
                     build_params.kmeans_n_iters = ivf_raft_cfg.kmeans_n_iters;
                     build_params.kmeans_trainset_fraction = ivf_raft_cfg.kmeans_trainset_fraction;
                     build_params.adaptive_centers = ivf_raft_cfg.adaptive_centers;
-                    gpu_index_ = raft::neighbors::ivf_flat::build<float, std::uint64_t>(*res_, build_params,
+                    gpu_index_ = raft::neighbors::ivf_flat::build<float, std::int64_t>(*res_, build_params,
                                                                                        data_gpu.data(), rows, dim);
                 } else if constexpr (std::is_same_v<detail::raft_ivf_pq_index, T>) {
                     auto build_params = raft::neighbors::ivf_pq::index_params{};
@@ -200,7 +200,7 @@ class RaftIvfIndexNode : public IndexNode {
                     }
                     build_params.codebook_kind = codebook_kind.value();
                     build_params.force_random_rotation = ivf_raft_cfg.force_random_rotation;
-                    gpu_index_ = raft::neighbors::ivf_pq::build<float, std::uint64_t>(*res_, build_params,
+                    gpu_index_ = raft::neighbors::ivf_pq::build<float, std::int64_t>(*res_, build_params,
                                                                                      data_gpu.data(), rows, dim);
                 } else {
                     static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
@@ -234,14 +234,14 @@ class RaftIvfIndexNode : public IndexNode {
                 RAFT_CUDA_TRY(cudaMemcpyAsync(data_gpu.data(), data, data_gpu.size() * sizeof(float), cudaMemcpyDefault,
                                               stream.value()));
 
-                auto indices = rmm::device_uvector<std::uint64_t>(rows, stream);
+                auto indices = rmm::device_uvector<std::int64_t>(rows, stream);
                 thrust::sequence(thrust::device, indices.begin(), indices.end(), gpu_index_->size());
 
                 if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {
-                    raft::neighbors::ivf_flat::extend<float, std::uint64_t>(*res_, *gpu_index_, data_gpu.data(),
+                    raft::neighbors::ivf_flat::extend<float, std::int64_t>(*res_, *gpu_index_, data_gpu.data(),
                                                                            indices.data(), rows);
                 } else if constexpr (std::is_same_v<detail::raft_ivf_pq_index, T>) {
-                    raft::neighbors::ivf_pq::extend<float, std::uint64_t>(*res_, *gpu_index_, data_gpu.data(),
+                    raft::neighbors::ivf_pq::extend<float, std::int64_t>(*res_, *gpu_index_, data_gpu.data(),
                                                                          indices.data(), rows);
                 } else {
                     static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
@@ -273,13 +273,13 @@ class RaftIvfIndexNode : public IndexNode {
             RAFT_CUDA_TRY(cudaMemcpyAsync(data_gpu.data(), data, data_gpu.size() * sizeof(float), cudaMemcpyDefault,
                                           stream.value()));
 
-            auto ids_gpu = rmm::device_uvector<std::uint64_t>(output_size, stream);
+            auto ids_gpu = rmm::device_uvector<std::int64_t>(output_size, stream);
             auto dis_gpu = rmm::device_uvector<float>(output_size, stream);
 
             if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {
                 auto search_params = raft::neighbors::ivf_flat::search_params{};
                 search_params.n_probes = ivf_raft_cfg.nprobe;
-                raft::neighbors::ivf_flat::search<float, std::uint64_t>(*res_, search_params, *gpu_index_,
+                raft::neighbors::ivf_flat::search<float, std::int64_t>(*res_, search_params, *gpu_index_,
                                                                        data_gpu.data(), rows, ivf_raft_cfg.k,
                                                                        ids_gpu.data(), dis_gpu.data());
             } else if constexpr (std::is_same_v<detail::raft_ivf_pq_index, T>) {
@@ -309,13 +309,13 @@ class RaftIvfIndexNode : public IndexNode {
                 }
                 search_params.internal_distance_dtype = internal_distance_dtype.value();
                 search_params.preferred_shmem_carveout = search_params.preferred_shmem_carveout;
-                raft::neighbors::ivf_pq::search<float, std::uint64_t>(*res_, search_params, *gpu_index_, data_gpu.data(),
+                raft::neighbors::ivf_pq::search<float, std::int64_t>(*res_, search_params, *gpu_index_, data_gpu.data(),
                                                                      rows, ivf_raft_cfg.k, ids_gpu.data(),
                                                                      dis_gpu.data());
             } else {
                 static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
             }
-            RAFT_CUDA_TRY(cudaMemcpyAsync(ids.get(), ids_gpu.data(), ids_gpu.size() * sizeof(std::uint64_t),
+            RAFT_CUDA_TRY(cudaMemcpyAsync(ids.get(), ids_gpu.data(), ids_gpu.size() * sizeof(std::int64_t),
                                           cudaMemcpyDefault, stream.value()));
             RAFT_CUDA_TRY(cudaMemcpyAsync(dis.get(), dis_gpu.data(), dis_gpu.size() * sizeof(float), cudaMemcpyDefault,
                                           stream.value()));
@@ -360,7 +360,7 @@ class RaftIvfIndexNode : public IndexNode {
 
     virtual int64_t
     Dim() const override {
-        auto result = std::uint64_t{};
+        auto result = std::int64_t{};
         if (gpu_index_) {
             result = gpu_index_->dim();
         }
@@ -374,7 +374,7 @@ class RaftIvfIndexNode : public IndexNode {
 
     virtual int64_t
     Count() const override {
-        auto result = std::uint64_t{};
+        auto result = std::int64_t{};
         if (gpu_index_) {
             result = gpu_index_->size();
         }

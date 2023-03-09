@@ -12,8 +12,8 @@
 # the License.
 
 set(RAFT_VERSION "${RAPIDS_VERSION}")
-set(RAFT_FORK "rapidsai")
-set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
+set(RAFT_FORK "cjnolet")
+set(RAFT_PINNED_TAG "imp-2304-specialize_ann_int64_t")
 
 function(find_and_configure_raft)
     set(oneValueArgs VERSION FORK PINNED_TAG)
