@@ -27,7 +27,7 @@ function(find_and_configure_raft)
             GLOBAL_TARGETS      raft::raft
             BUILD_EXPORT_SET    faiss-exports
             INSTALL_EXPORT_SET  faiss-exports
-            COMPONENTS "distance nn"
+            COMPONENTS "distance"
             CPM_ARGS
             GIT_REPOSITORY https://github.com/${PKG_FORK}/raft.git
             GIT_TAG        ${PKG_PINNED_TAG}
@@ -36,6 +36,7 @@ function(find_and_configure_raft)
             "BUILD_TESTS OFF"
             "BUILD_BENCH OFF"
             "RAFT_COMPILE_LIBRARIES OFF"
+            "RAFT_COMPILE_DIST_LIBRARY ON"
             "RAFT_COMPILE_NN_LIBRARY OFF"
             "RAFT_USE_FAISS_STATIC OFF" # Turn this on to build FAISS into your binary
             "RAFT_ENABLE_NN_DEPENDENCIES OFF"
