@@ -467,7 +467,7 @@ class RaftIvfIndexNode : public IndexNode {
             auto data_gpu = raft::make_device_matrix<float, std::int64_t>(*res_, rows, dim);
             raft::copy(data_gpu.data_handle(), data, data_gpu.size(), res_->get_stream());
 
-            auto gpu_results = raft_detail::raft_results{*res_};
+            auto gpu_results = std::make_unique<raft_detail::raft_results>(*res_);
             auto gpu_bitset = DeviceBitset{*res_, bitset};
 
             if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {
@@ -510,17 +510,17 @@ class RaftIvfIndexNode : public IndexNode {
                 static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
             }
 
-            for (auto row_index = 0; row_index < gpu_results.ids().extent(0); ++row_index) {
+            for (auto row_index = 0; row_index < gpu_results->ids().extent(0); ++row_index) {
                 auto begin =
-                    thrust::device_pointer_cast(gpu_results.ids_data() + gpu_results.ids().extent(1) * row_index);
-                auto end = thrust::device_pointer_cast(gpu_results.ids_data() +
-                                                       gpu_results.ids().extent(1) * row_index + ivf_raft_cfg.k);
+                    thrust::device_pointer_cast(gpu_results->ids_data() + gpu_results->ids().extent(1) * row_index);
+                auto end = thrust::device_pointer_cast(gpu_results->ids_data() +
+                                                       gpu_results->ids().extent(1) * row_index + ivf_raft_cfg.k);
                 thrust::copy(thrust::device.on(res_->get_stream().value()), begin, end,
                              ids.get() + row_index * ivf_raft_cfg.k);
                 auto dists_begin =
-                    thrust::device_pointer_cast(gpu_results.dists_data() + gpu_results.dists().extent(1) * row_index);
+                    thrust::device_pointer_cast(gpu_results->dists_data() + gpu_results->dists().extent(1) * row_index);
                 auto dists_end = thrust::device_pointer_cast(
-                    gpu_results.dists_data() + gpu_results.dists().extent(1) * row_index + ivf_raft_cfg.k);
+                    gpu_results->dists_data() + gpu_results->dists().extent(1) * row_index + ivf_raft_cfg.k);
                 thrust::copy(thrust::device.on(res_->get_stream().value()), dists_begin, dists_end,
                              dis.get() + row_index * ivf_raft_cfg.k);
             }
@@ -676,16 +676,16 @@ class RaftIvfIndexNode : public IndexNode {
     std::optional<T> gpu_index_;
 
     template <typename raft_search_params_t>
-    raft_detail::raft_results
+    std::unique_ptr<raft_detail::raft_results>
     RawSearch(raft::device_resources& res, raft::device_matrix_view<const float, std::int64_t> queries,
               raft_search_params_t const& search_params, int k, int target_k, DeviceBitsetView const& bitset) const {
-        auto result = raft_detail::raft_results{res, queries.extent(0), k};
+        auto result = std::make_unique<raft_detail::raft_results>(res, queries.extent(0), k);
         if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {
             raft::neighbors::ivf_flat::search<float, std::int64_t>(res, search_params, *gpu_index_, queries,
-                                                                   result.ids(), result.dists());
+                                                                   result->ids(), result->dists());
         } else if constexpr (std::is_same_v<detail::raft_ivf_pq_index, T>) {
-            raft::neighbors::ivf_pq::search<float, std::int64_t>(res, search_params, *gpu_index_, queries, result.ids(),
-                                                                 result.dists());
+            raft::neighbors::ivf_pq::search<float, std::int64_t>(res, search_params, *gpu_index_, queries,
+                                                                 result->ids(), result->dists());
         } else {
             static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
         }
@@ -699,7 +699,8 @@ class RaftIvfIndexNode : public IndexNode {
         auto enough_valid = raft::make_device_vector<bool>(res, queries.extent(0));
 
         raft_detail::postprocess_device_results<<<blocks, threads, 0, res.get_stream().value()>>>(
-            enough_valid.data_handle(), result.ids_data(), result.dists_data(), queries.extent(0), k, target_k, bitset);
+            enough_valid.data_handle(), result->ids_data(), result->dists_data(), queries.extent(0), k, target_k,
+            bitset);
 
         if (k < counts_ && !thrust::all_of(thrust::device.on(res.get_stream().value()), enough_valid.data_handle(),
                                            enough_valid.data_handle() + queries.extent(0), thrust::identity<bool>())) {
