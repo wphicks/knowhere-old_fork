@@ -511,28 +511,40 @@ class RaftIvfIndexNode : public IndexNode {
                 static_assert(std::is_same_v<detail::raft_ivf_flat_index, T>);
             }
 
-            auto ids_gpu = raft::make_device_matrix<std::int64_t, std::int64_t, raft::col_major>(*res_, rows, ivf_raft_cfg.k);
-            auto dists_gpu = raft::make_device_matrix<float, std::int64_t, raft::col_major>(*res_, rows, ivf_raft_cfg.k);
-            auto slice_coord = raft::matrix::slice_coordinates<int64_t>(0, 0, ivf_raft_cfg.k, rows);
-            raft::matrix::slice(
-                *res_,
-                raft::make_device_matrix_view<const std::int64_t, std::int64_t, raft::col_major>(gpu_results.ids_data(), gpu_results.ids().extent(1), gpu_results.ids().extent(0)),
-                ids_gpu.view(),
-                slice_coord);
-            raft::matrix::slice(
-                *res_,
-                raft::make_device_matrix_view<const float, std::int64_t, raft::col_major>(gpu_results.dists_data(), gpu_results.dists().extent(1), gpu_results.dists().extent(0)),
-                dists_gpu.view(),
-                slice_coord);
-            
-            raft::copy(ids.get(),
-                       ids_gpu.data_handle(),
-                       output_size,
-                       res_->get_stream().value());
-            raft::copy(dis.get(),
-                       dists_gpu.data_handle(),
-                       output_size,
-                       res_->get_stream().value());
+            if (gpu_results.ids().extent(1) > ivf_raft_cfg.k) {
+                auto ids_gpu = raft::make_device_matrix<std::int64_t, std::int64_t, raft::col_major>(*res_, rows, ivf_raft_cfg.k);
+                auto dists_gpu = raft::make_device_matrix<float, std::int64_t, raft::col_major>(*res_, rows, ivf_raft_cfg.k);
+                auto slice_coord = raft::matrix::slice_coordinates<int64_t>(0, 0, ivf_raft_cfg.k, rows);
+                raft::matrix::slice(
+                    *res_,
+                    raft::make_device_matrix_view<const std::int64_t, std::int64_t, raft::col_major>(gpu_results.ids_data(), gpu_results.ids().extent(1), gpu_results.ids().extent(0)),
+                    ids_gpu.view(),
+                    slice_coord);
+                raft::matrix::slice(
+                    *res_,
+                    raft::make_device_matrix_view<const float, std::int64_t, raft::col_major>(gpu_results.dists_data(), gpu_results.dists().extent(1), gpu_results.dists().extent(0)),
+                    dists_gpu.view(),
+                    slice_coord);
+                
+                raft::copy(ids.get(),
+                           ids_gpu.data_handle(),
+                           output_size,
+                           res_->get_stream().value());
+                raft::copy(dis.get(),
+                           dists_gpu.data_handle(),
+                           output_size,
+                           res_->get_stream().value());
+            } else {
+                // Slicing not needed. Copying data back to host
+                raft::copy(ids.get(),
+                           gpu_results.ids_data(),
+                           output_size,
+                           res_->get_stream().value());
+                raft::copy(dis.get(),
+                           gpu_results.dists_data(),
+                           output_size,
+                           res_->get_stream().value());
+            }
 
             res_->sync_stream();
 
