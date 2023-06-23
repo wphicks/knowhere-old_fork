@@ -47,7 +47,7 @@ inline auto raft_mutex = std::mutex{};
 
 struct gpu_resources {
     gpu_resources(std::size_t streams_per_device = std::size_t{1})
-        : streams_per_device_{streams_per_device}, stream_pools_{}, memory_resources_{} {
+        : streams_per_device_{streams_per_device}, stream_pools_{}, memory_resources_{}, upstream_mr_{} {
     }
 
     void
@@ -77,8 +77,8 @@ struct gpu_resources {
                 }
             }
             memory_resources_[device_id] =
-                std::make_unique<rmm::mr::pool_memory_resource<rmm::mr::device_memory_resource>>(
-                    rmm::mr::get_current_device_resource(), init_pool_size, max_pool_size);
+                std::make_unique<rmm::mr::pool_memory_resource<rmm::mr::cuda_memory_resource>>(
+                    &upstream_mr_, init_pool_size, max_pool_size);
             rmm::mr::set_current_device_resource(memory_resources_[device_id].get());
         }
     }
@@ -96,7 +96,8 @@ struct gpu_resources {
  private:
     std::size_t streams_per_device_;
     std::map<int, std::shared_ptr<rmm::cuda_stream_pool>> stream_pools_;
-    std::map<int, std::unique_ptr<rmm::mr::pool_memory_resource<rmm::mr::device_memory_resource>>> memory_resources_;
+    std::map<int, std::unique_ptr<rmm::mr::pool_memory_resource<rmm::mr::cuda_memory_resource>>> memory_resources_;
+    rmm::mr::cuda_memory_resource upstream_mr_;
 };
 
 inline auto&
