@@ -49,6 +49,9 @@ struct gpu_resources {
     gpu_resources(std::size_t streams_per_device = std::size_t{1})
         : streams_per_device_{streams_per_device}, stream_pools_{}, memory_resources_{}, upstream_mr_{} {
     }
+    ~gpu_resources() {
+        memory_resources_.clear();
+    }
 
     void
     init(int device_id = get_current_device()) {
