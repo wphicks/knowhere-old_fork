@@ -14,6 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
+// Don't re-compile IVF PQ specializations
+#include <raft/neighbors/specializations/ivf_pq.cuh>
+
+
 #include "ivf_raft.cuh"
 #include "knowhere/factory.h"
 #include "knowhere/index_node_thread_pool_wrapper.h"

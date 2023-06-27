@@ -23,15 +23,16 @@
 #include <memory>
 #include <optional>
 
+
 #include "common/raft_metric.h"
 #include "index/ivf_raft/ivf_raft_config.h"
 #include "knowhere/factory.h"
 #include "knowhere/index_node_thread_pool_wrapper.h"
-#include "raft/core/device_resources.hpp"
-#include "raft/neighbors/ivf_flat.cuh"
-#include "raft/neighbors/ivf_flat_types.hpp"
-#include "raft/neighbors/ivf_pq.cuh"
-#include "raft/neighbors/ivf_pq_types.hpp"
+#include <raft/core/device_resources.hpp>
+#include <raft/neighbors/ivf_flat.cuh>
+#include <raft/neighbors/ivf_flat_types.hpp>
+#include <raft/neighbors/ivf_pq.cuh>
+#include <raft/neighbors/ivf_pq_types.hpp>
 #include "thrust/execution_policy.h"
 #include "thrust/sequence.h"
 

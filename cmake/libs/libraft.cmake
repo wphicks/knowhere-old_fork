@@ -12,8 +12,8 @@
 # the License.
 
 set(RAFT_VERSION "${RAPIDS_VERSION}")
-set(RAFT_FORK "rapidsai")
-set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
+set(RAFT_FORK "cjnolet")
+set(RAFT_PINNED_TAG "imp-2304-specialize_ann_int64_t")
 
 function(find_and_configure_raft)
     set(oneValueArgs VERSION FORK PINNED_TAG)
@@ -27,7 +27,7 @@ function(find_and_configure_raft)
             GLOBAL_TARGETS      raft::raft
             BUILD_EXPORT_SET    faiss-exports
             INSTALL_EXPORT_SET  faiss-exports
-            COMPONENTS "distance nn"
+            COMPONENTS "distance"
             CPM_ARGS
             GIT_REPOSITORY https://github.com/${PKG_FORK}/raft.git
             GIT_TAG        ${PKG_PINNED_TAG}
@@ -36,6 +36,7 @@ function(find_and_configure_raft)
             "BUILD_TESTS OFF"
             "BUILD_BENCH OFF"
             "RAFT_COMPILE_LIBRARIES OFF"
+            "RAFT_COMPILE_DIST_LIBRARY ON"
             "RAFT_COMPILE_NN_LIBRARY OFF"
             "RAFT_USE_FAISS_STATIC OFF" # Turn this on to build FAISS into your binary
             "RAFT_ENABLE_NN_DEPENDENCIES OFF"
