@@ -1,7 +1,3 @@
-#include "../src/distance/specializations/fused_l2_nn_double_int.cu"
-#include "../src/distance/specializations/fused_l2_nn_double_int64.cu"
-#include "../src/distance/specializations/fused_l2_nn_float_int.cu"
-#include "../src/distance/specializations/fused_l2_nn_float_int64.cu"
 #include "../src/matrix/specializations/detail/select_k_float_int64_t.cu"
 #include "../src/matrix/specializations/detail/select_k_float_uint32_t.cu"
 #include "../src/matrix/specializations/detail/select_k_half_int64_t.cu"
