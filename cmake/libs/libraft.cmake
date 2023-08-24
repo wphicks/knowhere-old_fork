@@ -62,6 +62,7 @@ function(find_and_configure_raft)
     "BUILD_TESTS OFF"
     "BUILD_BENCH OFF"
     "RAFT_COMPILE_LIBRARY ON"
+    "BUILD_SHARED_LIBS OFF"
     "RAFT_USE_FAISS_STATIC OFF")
 
     if(raft_ADDED)
