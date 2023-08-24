@@ -56,7 +56,9 @@ function(find_and_configure_raft)
     OPTIONS
     "BUILD_TESTS OFF"
     "BUILD_BENCH OFF"
-    "RAFT_USE_FAISS_STATIC OFF") # Turn this on to build FAISS into your binary
+    "RAFT_COMPILE_LIBRARY ON"
+    "BUILD_SHARED_LIBS OFF"
+    "RAFT_USE_FAISS_STATIC OFF")
 
     if(raft_ADDED)
         message(VERBOSE "KNOWHERE: Using RAFT located in ${raft_SOURCE_DIR}")
