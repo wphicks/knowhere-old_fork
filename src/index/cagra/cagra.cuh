@@ -22,8 +22,9 @@ auto static constexpr const SMALL = "SMALL";
 auto static constexpr const AUTO = "AUTO";
 }  // namespace cagra_hash_mode
 
-inline expected<raft::neighbors::cagra::search_algo>
+inline auto
 str_to_search_algo(std::string const& str) {
+    auto result = expected<raft::neighbors::cagra::search_algo>{};
     static const std::unordered_map<std::string, raft::neighbors::cagra::search_algo> name_map = {
         {cagra_search_algo::SINGLE_CTA, raft::neighbors::cagra::search_algo::SINGLE_CTA},
         {cagra_search_algo::MULTI_CTA, raft::neighbors::cagra::search_algo::MULTI_CTA},
@@ -32,13 +33,17 @@ str_to_search_algo(std::string const& str) {
     };
 
     auto it = name_map.find(str);
-    if (it == name_map.end())
-        return Status::invalid_args;
-    return it->second;
+    if (it == name_map.end()) {
+        result = Status::invalid_args;
+    } else {
+        result = it->second;
+    }
+    return result;
 }
 
-inline expected<raft::neighbors::cagra::hash_mode>
+inline auto
 str_to_hashmap_mode(std::string const& str) {
+    auto result = expected<raft::neighbors::cagra::hash_mode>{};
     static const std::unordered_map<std::string, raft::neighbors::cagra::hash_mode> name_map = {
         {cagra_hash_mode::SMALL, raft::neighbors::cagra::hash_mode::SMALL},
         {cagra_hash_mode::HASH, raft::neighbors::cagra::hash_mode::HASH},
@@ -46,9 +51,12 @@ str_to_hashmap_mode(std::string const& str) {
     };
 
     auto it = name_map.find(str);
-    if (it == name_map.end())
-        return Status::invalid_args;
-    return it->second;
+    if (it == name_map.end()) {
+        result = Status::invalid_args;
+    } else {
+        result = it->second;
+    }
+    return result;
 }
 
 namespace detail {
@@ -138,60 +146,68 @@ class CagraIndexNode : public IndexNode {
 
     expected<DataSetPtr>
     Search(const DataSet& dataset, const Config& cfg, const BitsetView& bitset) const override {
+        auto result = expected<DataSetPtr>{};
         auto cagra_cfg = static_cast<const CagraConfig&>(cfg);
         auto rows = dataset.GetRows();
         auto dim = dataset.GetDim();
         if (cagra_cfg.k.value() > cagra_cfg.itopk_size.value()) {
             LOG_KNOWHERE_WARNING_ << "topk must be smaller than itopk_size parameter" << std::endl;
-            return Status::raft_inner_error;
+            result = Status::raft_inner_error;
+        } else {
+            auto* data = reinterpret_cast<float const*>(dataset.GetTensor());
+            auto output_size = rows * cagra_cfg.k.value();
+            auto ids = std::unique_ptr<idx_type[]>(new idx_type[output_size]);
+            auto dis = std::unique_ptr<float[]>(new float[output_size]);
+            try {
+                auto scoped_device = raft_utils::device_setter{devs_[0]};
+                auto& res = raft_utils::get_raft_resources();
+
+                auto data_gpu = raft::make_device_matrix<float, idx_type>(res, rows, dim);
+                raft::copy(data_gpu.data_handle(), data, data_gpu.size(), res.get_stream());
+
+                auto search_params = raft::neighbors::cagra::search_params{};
+                search_params.max_queries = cagra_cfg.max_queries.value();
+                search_params.itopk_size = cagra_cfg.itopk_size.value();
+                search_params.team_size = cagra_cfg.team_size.value();
+                search_params.algo = str_to_search_algo(cagra_cfg.algo.value()).value();
+                search_params.search_width = cagra_cfg.search_width.value();
+                search_params.min_iterations = cagra_cfg.min_iterations.value();
+                search_params.max_iterations = cagra_cfg.max_iterations.value();
+                search_params.thread_block_size = cagra_cfg.thread_block_size.value();
+                search_params.hashmap_mode = str_to_hashmap_mode(cagra_cfg.hashmap_mode.value()).value();
+                search_params.hashmap_min_bitlen = cagra_cfg.hashmap_min_bitlen.value();
+                search_params.hashmap_max_fill_rate = cagra_cfg.hashmap_max_fill_rate.value();
+                auto ids_dev = raft::make_device_matrix<idx_type, idx_type>(res, rows, cagra_cfg.k.value());
+                auto dis_dev = raft::make_device_matrix<float, idx_type>(res, rows, cagra_cfg.k.value());
+                raft::neighbors::cagra::search(res, search_params, *gpu_index_,
+                                               raft::make_const_mdspan(data_gpu.view()), ids_dev.view(),
+                                               dis_dev.view());
+
+                raft::copy(ids.get(), ids_dev.data_handle(), output_size, res.get_stream());
+                raft::copy(dis.get(), dis_dev.data_handle(), output_size, res.get_stream());
+                res.sync_stream();
+
+                result = GenResultDataSet(rows, cagra_cfg.k.value(), ids.release(), dis.release());
+            } catch (std::exception& e) {
+                LOG_KNOWHERE_WARNING_ << "RAFT inner error, " << e.what();
+                result = Status::raft_inner_error;
+            }
+            return result;
         }
-        auto* data = reinterpret_cast<float const*>(dataset.GetTensor());
-        auto output_size = rows * cagra_cfg.k.value();
-        auto ids = std::unique_ptr<idx_type[]>(new idx_type[output_size]);
-        auto dis = std::unique_ptr<float[]>(new float[output_size]);
-        try {
-            auto scoped_device = raft_utils::device_setter{devs_[0]};
-            auto& res = raft_utils::get_raft_resources();
-
-            auto data_gpu = raft::make_device_matrix<float, idx_type>(res, rows, dim);
-            raft::copy(data_gpu.data_handle(), data, data_gpu.size(), res.get_stream());
-
-            auto search_params = raft::neighbors::cagra::search_params{};
-            search_params.max_queries = cagra_cfg.max_queries.value();
-            search_params.itopk_size = cagra_cfg.itopk_size.value();
-            search_params.team_size = cagra_cfg.team_size.value();
-            search_params.algo = str_to_search_algo(cagra_cfg.algo.value()).value();
-            search_params.search_width = cagra_cfg.search_width.value();
-            search_params.min_iterations = cagra_cfg.min_iterations.value();
-            search_params.max_iterations = cagra_cfg.max_iterations.value();
-            search_params.thread_block_size = cagra_cfg.thread_block_size.value();
-            search_params.hashmap_mode = str_to_hashmap_mode(cagra_cfg.hashmap_mode.value()).value();
-            search_params.hashmap_min_bitlen = cagra_cfg.hashmap_min_bitlen.value();
-            search_params.hashmap_max_fill_rate = cagra_cfg.hashmap_max_fill_rate.value();
-            auto ids_dev = raft::make_device_matrix<idx_type, idx_type>(res, rows, cagra_cfg.k.value());
-            auto dis_dev = raft::make_device_matrix<float, idx_type>(res, rows, cagra_cfg.k.value());
-            raft::neighbors::cagra::search(res, search_params, *gpu_index_, raft::make_const_mdspan(data_gpu.view()),
-                                           ids_dev.view(), dis_dev.view());
-
-            raft::copy(ids.get(), ids_dev.data_handle(), output_size, res.get_stream());
-            raft::copy(dis.get(), dis_dev.data_handle(), output_size, res.get_stream());
-            res.sync_stream();
-
-        } catch (std::exception& e) {
-            LOG_KNOWHERE_WARNING_ << "RAFT inner error, " << e.what();
-            return Status::raft_inner_error;
-        }
-        return GenResultDataSet(rows, cagra_cfg.k.value(), ids.release(), dis.release());
     }
 
     expected<DataSetPtr>
     RangeSearch(const DataSet& dataset, const Config& cfg, const BitsetView& bitset) const override {
-        return Status::not_implemented;
+        auto result = expected<DataSetPtr>{};
+        result = Status::not_implemented;
+        return result;
     }
 
     expected<DataSetPtr>
     GetVectorByIds(const DataSet& dataset) const override {
-        return Status::not_implemented;
+        auto result = expected<DataSetPtr>{};
+        result = Status::not_implemented;
+        return result;
     }
 
     bool
@@ -201,32 +217,36 @@ class CagraIndexNode : public IndexNode {
 
     expected<DataSetPtr>
     GetIndexMeta(const Config& cfg) const override {
-        return Status::not_implemented;
+        auto result = expected<DataSetPtr>{};
+        result = Status::not_implemented;
+        return result;
     }
 
     Status
     Serialize(BinarySet& binset) const override {
+        auto result = Status::success;
         if (!gpu_index_.has_value()) {
             LOG_KNOWHERE_ERROR_ << "Can not serialize empty RaftCagraIndex.";
-            return Status::empty_index;
+            result = Status::empty_index;
+        } else {
+            std::stringbuf buf;
+            std::ostream os(&buf);
+            os.write((char*)(&this->dim_), sizeof(this->dim_));
+            os.write((char*)(&this->counts_), sizeof(this->counts_));
+            os.write((char*)(&this->devs_[0]), sizeof(this->devs_[0]));
+
+            auto scoped_device = raft_utils::device_setter{devs_[0]};
+            auto& res = raft_utils::get_raft_resources();
+
+            raft::neighbors::cagra::serialize<float, idx_type>(res, os, *gpu_index_);
+
+            os.flush();
+            std::shared_ptr<uint8_t[]> index_binary(new (std::nothrow) uint8_t[buf.str().size()]);
+
+            memcpy(index_binary.get(), buf.str().c_str(), buf.str().size());
+            binset.Append(this->Type(), index_binary, buf.str().size());
         }
-        std::stringbuf buf;
-        std::ostream os(&buf);
-        os.write((char*)(&this->dim_), sizeof(this->dim_));
-        os.write((char*)(&this->counts_), sizeof(this->counts_));
-        os.write((char*)(&this->devs_[0]), sizeof(this->devs_[0]));
-
-        auto scoped_device = raft_utils::device_setter{devs_[0]};
-        auto& res = raft_utils::get_raft_resources();
-
-        raft::neighbors::cagra::serialize<float, idx_type>(res, os, *gpu_index_);
-
-        os.flush();
-        std::shared_ptr<uint8_t[]> index_binary(new (std::nothrow) uint8_t[buf.str().size()]);
-
-        memcpy(index_binary.get(), buf.str().c_str(), buf.str().size());
-        binset.Append(this->Type(), index_binary, buf.str().size());
-        return Status::success;
+        return result;
     }
 
     Status
