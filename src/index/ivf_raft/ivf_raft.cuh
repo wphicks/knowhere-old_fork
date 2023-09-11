@@ -23,12 +23,12 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <raft/core/logger.hpp>
 #include <raft/neighbors/ivf_flat.cuh>
 #include <raft/neighbors/ivf_pq.cuh>
 
 #include "common/raft/raft_utils.h"
 #include "common/raft_metric.h"
-#include "fmt/core.h"
 #include "index/ivf_raft/ivf_raft_config.h"
 #include "knowhere/comp/index_param.h"
 #include "knowhere/device_bitset.h"
