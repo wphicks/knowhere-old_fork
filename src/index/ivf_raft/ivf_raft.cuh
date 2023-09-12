@@ -27,7 +27,6 @@
 
 #include "common/raft/raft_utils.h"
 #include "common/raft_metric.h"
-#include "fmt/core.h"
 #include "index/ivf_raft/ivf_raft_config.h"
 #include "knowhere/comp/index_param.h"
 #include "knowhere/device_bitset.h"
@@ -172,7 +171,7 @@ str_to_codebook_gen(std::string const& str) {
     auto it = name_map.find(str);
     if (it == name_map.end())
         return expected<raft::neighbors::ivf_pq::codebook_gen>::Err(Status::invalid_args,
-                                                                    fmt::format("invalid arguments: {}", str));
+                                                                    "Invalid codebook_gen");
     return it->second;
 }
 
@@ -212,7 +211,7 @@ str_to_cuda_dtype(std::string const& str) {
 
     auto it = name_map.find(str);
     if (it == name_map.end())
-        return expected<cudaDataType_t>::Err(Status::invalid_args, fmt::format("invalid arguments: {}", str));
+        return expected<cudaDataType_t>::Err(Status::invalid_args, "Invalid cudaDataType");
     return it->second;
 }
 
@@ -398,13 +397,13 @@ class RaftIvfIndexNode : public IndexNode {
                 if (!lut_dtype.has_value()) {
                     LOG_KNOWHERE_WARNING_ << "please check lookup dtype: " << ivf_raft_cfg.lut_dtype.value();
                     return expected<DataSetPtr>::Err(
-                        lut_dtype.error(), fmt::format("invalid lookup dtype: {}", ivf_raft_cfg.lut_dtype.value()));
+                        lut_dtype.error(), "invalid lookup dtype");
                 }
                 if (lut_dtype.value() != CUDA_R_32F && lut_dtype.value() != CUDA_R_16F &&
                     lut_dtype.value() != CUDA_R_8U) {
                     LOG_KNOWHERE_WARNING_ << "selected lookup dtype not supported: " << ivf_raft_cfg.lut_dtype.value();
                     return expected<DataSetPtr>::Err(Status::invalid_args,
-                                                     fmt::format("invalid lookup dtype: {}", lut_dtype.value()));
+                            "invalid lookup dtype");
                 }
                 search_params.lut_dtype = lut_dtype.value();
                 auto internal_distance_dtype = detail::str_to_cuda_dtype(ivf_raft_cfg.internal_distance_dtype.value());
@@ -412,14 +411,13 @@ class RaftIvfIndexNode : public IndexNode {
                     LOG_KNOWHERE_WARNING_ << "please check internal distance dtype: "
                                           << ivf_raft_cfg.internal_distance_dtype.value();
                     return expected<DataSetPtr>::Err(internal_distance_dtype.error(),
-                                                     fmt::format("invalid internal distance dtype: {}",
-                                                                 ivf_raft_cfg.internal_distance_dtype.value()));
+                            "invalid internal distance dtype");
                 }
                 if (internal_distance_dtype.value() != CUDA_R_32F && internal_distance_dtype.value() != CUDA_R_16F) {
                     LOG_KNOWHERE_WARNING_ << "selected internal distance dtype not supported: "
                                           << ivf_raft_cfg.internal_distance_dtype.value();
                     return expected<DataSetPtr>::Err(
-                        Status::invalid_args, fmt::format("invalid lookup dtype: {}", internal_distance_dtype.value()));
+                        Status::invalid_args, "invalid lookup dtype");
                 }
                 search_params.internal_distance_dtype = internal_distance_dtype.value();
                 search_params.preferred_shmem_carveout = search_params.preferred_shmem_carveout;
