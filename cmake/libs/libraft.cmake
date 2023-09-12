@@ -63,19 +63,6 @@ function(find_and_configure_raft)
     else()
         message(VERBOSE "KNOWHERE: Using RAFT located in ${raft_DIR}")
     endif()
-  include(${rapids-cmake-dir}/cpm/spdlog.cmake)
-  rapids_cpm_spdlog(FMT_OPTION "EXTERNAL_FMT_HO" INSTALL_EXPORT_SET raft-exports)
-  rapids_export_package(BUILD spdlog raft-exports)
-
-  if(spdlog_ADDED)
-    rapids_export(
-      BUILD spdlog
-      EXPORT_SET spdlog
-      GLOBAL_TARGETS spdlog spdlog_header_only
-      NAMESPACE spdlog::)
-    include("${rapids-cmake-dir}/export/find_package_root.cmake")
-    rapids_export_find_package_root(BUILD spdlog [=[${CMAKE_CURRENT_LIST_DIR}]=] raft-exports)
-  endif()
 endfunction()
 
 # Change pinned tag here to test a commit in CI To use a different RAFT locally,

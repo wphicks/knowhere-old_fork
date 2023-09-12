@@ -133,6 +133,7 @@ add_library(knowhere SHARED ${KNOWHERE_SRCS})
 add_dependencies(knowhere ${KNOWHERE_LINKER_LIBS})
 if(WITH_RAFT)
   list(APPEND KNOWHERE_LINKER_LIBS raft::raft)
+  list(APPEND KNOWHERE_LINKER_LIBS spdlog::spdlog_header_only)
 endif()
 target_link_libraries(knowhere PUBLIC ${KNOWHERE_LINKER_LIBS})
 target_include_directories(
