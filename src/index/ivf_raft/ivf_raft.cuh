@@ -23,7 +23,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <raft/neighbors/specializations.cuh>
 
 #include "common/raft/raft_utils.h"
 #include "common/raft_metric.h"
