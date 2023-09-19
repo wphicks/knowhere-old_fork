@@ -12,13 +12,6 @@
 #pragma once
 
 #include <faiss/gpu/StandardGpuResources.h>
-#ifdef KNOWHERE_WITH_RAFT
-#include <rmm/cuda_device.hpp>
-#include <rmm/mr/device/device_memory_resource.hpp>
-#include <rmm/mr/device/per_device_resource.hpp>
-#include <rmm/mr/device/pool_memory_resource.hpp>
-#include <vector>
-#endif
 
 #include <memory>
 #include <mutex>

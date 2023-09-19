@@ -35,6 +35,8 @@
 #include "knowhere/log.h"
 #include "knowhere/utils.h"
 #include "raft/core/device_resources.hpp"
+#include "raft/core/device_resources_manager.hpp"
+#include "raft/core/device_setter.hpp"
 #include "thrust/execution_policy.h"
 #include "thrust/logical.h"
 #include "thrust/sequence.h"
@@ -234,6 +236,7 @@ template <typename T>
 class RaftIvfIndexNode : public IndexNode {
  public:
     RaftIvfIndexNode(const Object& object) : device_id_{-1}, gpu_index_{} {
+        raft_utils::init_gpu_resources();
     }
 
     Status
@@ -245,8 +248,8 @@ class RaftIvfIndexNode : public IndexNode {
         }
         try {
             RANDOM_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_);
-            raft_utils::device_setter with_this_device(this->device_id_);
-            raft_utils::init_gpu_resources();
+        raft:
+            device_setter with_this_device(this->device_id_);
 
             auto metric = Str2RaftMetricType(ivf_raft_cfg.metric_type.value());
             if (!metric.has_value()) {
@@ -259,7 +262,7 @@ class RaftIvfIndexNode : public IndexNode {
                                       << ivf_raft_cfg.metric_type.value();
                 return Status::invalid_metric_type;
             }
-            auto& res = raft_utils::get_raft_resources();
+            auto& res = raft::device_resources_manager::get_device_resources();
 
             auto rows = dataset.GetRows();
             auto dim = dataset.GetDim();
@@ -311,13 +314,12 @@ class RaftIvfIndexNode : public IndexNode {
         }
         try {
             RAFT_EXPECTS(this->device_id_ != -1, "call data add before index train.");
-            raft_utils::device_setter with_this_device{this->device_id_};
+            raft::device_setter with_this_device{this->device_id_};
             auto rows = dataset.GetRows();
             auto dim = dataset.GetDim();
             auto* data = reinterpret_cast<float const*>(dataset.GetTensor());
 
-            raft_utils::init_gpu_resources();
-            auto& res = raft_utils::get_raft_resources();
+            auto& res = raft::device_resources_manager::get_device_resources();
 
             // TODO(wphicks): Clean up transfer with raft
             // buffer objects when available
@@ -364,8 +366,8 @@ class RaftIvfIndexNode : public IndexNode {
         auto dis = std::unique_ptr<float[]>(new float[output_size]);
         try {
             RAFT_EXPECTS(this->device_id_ != -1, "device id is -1, when call search");
-            raft_utils::device_setter with_this_device{this->device_id_};
-            auto& res_ = raft_utils::get_raft_resources();
+            raft::device_setter with_this_device{this->device_id_};
+            auto& res_ = raft::device_resources_manager::get_device_resources();
 
             // TODO(wphicks): Clean up transfer with raft
             // buffer objects when available
@@ -482,8 +484,8 @@ class RaftIvfIndexNode : public IndexNode {
         os.write((char*)(&this->counts_), sizeof(this->counts_));
         os.write((char*)(&this->device_id_), sizeof(this->device_id_));
 
-        raft_utils::device_setter with_this_device{device_id_};
-        auto& res = raft_utils::get_raft_resources();
+        raft::device_setter with_this_device{device_id_};
+        auto& res = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             raft::neighbors::ivf_flat::serialize<float, std::int64_t>(res, os, *gpu_index_);
@@ -518,10 +520,9 @@ class RaftIvfIndexNode : public IndexNode {
         // status
         is.read((char*)(&this->device_id_), sizeof(this->device_id_));
         MIN_LOAD_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_, binary->size);
-        raft_utils::device_setter with_this_device{this->device_id_};
+        raft::device_setter with_this_device{this->device_id_};
 
-        raft_utils::init_gpu_resources();
-        auto& res = raft_utils::get_raft_resources();
+        auto& res = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             T index_ = raft::neighbors::ivf_flat::deserialize<float, std::int64_t>(res, is);

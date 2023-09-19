@@ -1,8 +1,9 @@
 #include "cagra_config.h"
-#include "common/raft/raft_utils.h"
 #include "common/raft_metric.h"
 #include "knowhere/index_node.h"
 #include "knowhere/log.h"
+#include "raft/core/device_resources_manager.hpp"
+#include "raft/core/device_setter.hpp"
 #include "raft/neighbors/cagra.cuh"
 #include "raft/neighbors/cagra_serialize.cuh"
 namespace knowhere {
@@ -14,6 +15,7 @@ using cagra_index = raft::neighbors::experimental::cagra::index<float, idx_type>
 class CagraIndexNode : public IndexNode {
  public:
     CagraIndexNode(const Object& object) : devs_{}, gpu_index_{} {
+        raft_utils::init_gpu_resources();
     }
 
     Status
@@ -37,12 +39,12 @@ class CagraIndexNode : public IndexNode {
             return Status::invalid_metric_type;
         }
         devs_.insert(devs_.begin(), cagra_cfg.gpu_ids.value().begin(), cagra_cfg.gpu_ids.value().end());
-        auto scoped_device = raft_utils::device_setter{*cagra_cfg.gpu_ids.begin()};
+        auto scoped_device = raft::device_setter{*cagra_cfg.gpu_ids.begin()};
         auto build_params = raft::neighbors::experimental::cagra::index_params{};
         build_params.intermediate_graph_degree = cagra_cfg.intermediate_graph_degree.value();
         build_params.graph_degree = cagra_cfg.graph_degree.value();
         build_params.metric = metric.value();
-        auto& res = raft_utils::get_raft_resources();
+        auto& res = raft::get_raft_resources();
         auto rows = dataset.GetRows();
         auto dim = dataset.GetDim();
         auto* data = reinterpret_cast<float const*>(dataset.GetTensor());
@@ -72,8 +74,8 @@ class CagraIndexNode : public IndexNode {
         auto ids = std::unique_ptr<idx_type[]>(new idx_type[output_size]);
         auto dis = std::unique_ptr<float[]>(new float[output_size]);
         try {
-            auto scoped_device = raft_utils::device_setter{devs_[0]};
-            auto& res_ = raft_utils::get_raft_resources();
+            auto scoped_device = raft::device_setter{devs_[0]};
+            auto& res_ = raft::device_resources_manager::get_device_resources();
 
             auto data_gpu = raft::make_device_matrix<float, idx_type>(res_, rows, dim);
             raft::copy(data_gpu.data_handle(), data, data_gpu.size(), res_.get_stream());
@@ -130,7 +132,7 @@ class CagraIndexNode : public IndexNode {
         os.write((char*)(&this->counts_), sizeof(this->counts_));
         os.write((char*)(&this->devs_[0]), sizeof(this->devs_[0]));
 
-        auto scoped_device = raft_utils::device_setter{devs_[0]};
+        auto scoped_device = raft::device_setter{devs_[0]};
         rmm::mr::cuda_memory_resource mr;
         rmm::cuda_stream stm;
         raft::device_resources res(stm.view(), nullptr, &mr);
@@ -160,9 +162,9 @@ class CagraIndexNode : public IndexNode {
         is.read((char*)(&this->counts_), sizeof(this->counts_));
         this->devs_.resize(1);
         is.read((char*)(&this->devs_[0]), sizeof(this->devs_[0]));
-        auto scoped_device = raft_utils::device_setter{devs_[0]};
+        auto scoped_device = raft::device_setter{devs_[0]};
 
-        auto& res = raft_utils::get_raft_resources();
+        auto& res = raft::device_resources_manager::get_device_resources();
 
         cagra_index index_ = raft::neighbors::experimental::cagra::deserialize<float, idx_type>(res, is);
         is.sync();

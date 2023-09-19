@@ -23,9 +23,6 @@
 #include "index/gpu/gpu_res_mgr.h"
 #endif
 #include "simd/hook.h"
-#ifdef KNOWHERE_WITH_RAFT
-#include "common/raft/raft_utils.h"
-#endif
 
 namespace knowhere {
 
@@ -152,7 +149,7 @@ KnowhereConfig::FreeGPUResource() {
 void
 KnowhereConfig::SetRaftMemPool(size_t init_size, size_t max_size) {
 #ifdef KNOWHERE_WITH_RAFT
-    raft_utils::set_mem_pool_size(init_size, max_size);
+    raft::device_resources_manager::set_mem_pool(init_size, max_size);
 #endif
 }
 
