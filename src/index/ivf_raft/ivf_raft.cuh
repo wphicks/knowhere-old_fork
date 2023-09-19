@@ -51,7 +51,7 @@ namespace knowhere {
 
 namespace raft_detail {
 struct raft_results {
-    raft_results(raft::device_resources& res)
+    raft_results(raft::device_resources const& res)
         : ids_{raft::make_device_matrix<std::int64_t, std::int64_t>(res, 0, 0)},
           dists_{raft::make_device_matrix<float, std::int64_t>(res, 0, 0)} {
     }
