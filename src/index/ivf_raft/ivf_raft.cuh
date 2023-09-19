@@ -55,7 +55,7 @@ struct raft_results {
         : ids_{raft::make_device_matrix<std::int64_t, std::int64_t>(res, 0, 0)},
           dists_{raft::make_device_matrix<float, std::int64_t>(res, 0, 0)} {
     }
-    raft_results(raft::device_resources& res, std::int64_t rows, std::int64_t k)
+    raft_results(raft::device_resources const& res, std::int64_t rows, std::int64_t k)
         : ids_{raft::make_device_matrix<std::int64_t, std::int64_t>(res, rows, k)},
           dists_{raft::make_device_matrix<float, std::int64_t>(res, rows, k)} {
     }
@@ -267,7 +267,7 @@ class RaftIvfIndexNode : public IndexNode {
                                       << ivf_raft_cfg.metric_type.value();
                 return Status::invalid_metric_type;
             }
-            auto& res = raft::device_resources_manager::get_device_resources();
+            auto const& res = raft::device_resources_manager::get_device_resources();
 
             auto rows = dataset.GetRows();
             auto dim = dataset.GetDim();
@@ -324,7 +324,7 @@ class RaftIvfIndexNode : public IndexNode {
             auto dim = dataset.GetDim();
             auto* data = reinterpret_cast<float const*>(dataset.GetTensor());
 
-            auto& res = raft::device_resources_manager::get_device_resources();
+            auto const& res = raft::device_resources_manager::get_device_resources();
 
             // TODO(wphicks): Clean up transfer with raft
             // buffer objects when available
@@ -372,7 +372,7 @@ class RaftIvfIndexNode : public IndexNode {
         try {
             RAFT_EXPECTS(this->device_id_ != -1, "device id is -1, when call search");
             raft::device_setter with_this_device{this->device_id_};
-            auto& res_ = raft::device_resources_manager::get_device_resources();
+            auto const& res_ = raft::device_resources_manager::get_device_resources();
 
             // TODO(wphicks): Clean up transfer with raft
             // buffer objects when available
@@ -490,7 +490,7 @@ class RaftIvfIndexNode : public IndexNode {
         os.write((char*)(&this->device_id_), sizeof(this->device_id_));
 
         raft::device_setter with_this_device{device_id_};
-        auto& res = raft::device_resources_manager::get_device_resources();
+        auto const& res = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             raft::neighbors::ivf_flat::serialize<float, std::int64_t>(res, os, *gpu_index_);
@@ -527,7 +527,7 @@ class RaftIvfIndexNode : public IndexNode {
         MIN_LOAD_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_, binary->size);
         raft::device_setter with_this_device{this->device_id_};
 
-        auto& res = raft::device_resources_manager::get_device_resources();
+        auto const& res = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             T index_ = raft::neighbors::ivf_flat::deserialize<float, std::int64_t>(res, is);
@@ -589,7 +589,7 @@ class RaftIvfIndexNode : public IndexNode {
 
     template <typename raft_search_params_t>
     raft_detail::raft_results
-    RawSearch(raft::device_resources& res, raft::device_matrix_view<const float, std::int64_t> queries,
+    RawSearch(raft::device_resources const& res, raft::device_matrix_view<const float, std::int64_t> queries,
               raft_search_params_t const& search_params, int k, int target_k, DeviceBitsetView const& bitset) const {
         auto max_k = counts_;
         if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {
