@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-add_definitions(-DKNOWHERE_WITH_RAFT)
+add_definitions(KNOWHERE_WITH_RAFT)
 include(cmake/utils/fetch_rapids.cmake)
 include(rapids-cmake)
 include(rapids-cpm)
