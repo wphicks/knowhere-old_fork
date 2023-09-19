@@ -21,7 +21,7 @@
 #include "knowhere/log.h"
 #ifdef KNOWHERE_WITH_GPU
 #include "index/gpu/gpu_res_mgr.h"
-#ifdef KNOWHERE_WITH_GPU
+#ifdef KNOWHERE_WITH_RAFT
 #include "raft/core/device_resources_manager.hpp"
 #endif
 #endif
