@@ -254,7 +254,6 @@ class RaftIvfIndexNode : public IndexNode {
         }
         try {
             RANDOM_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_);
-        raft:
             raft::device_setter with_this_device(this->device_id_);
 
             auto metric = Str2RaftMetricType(ivf_raft_cfg.metric_type.value());
