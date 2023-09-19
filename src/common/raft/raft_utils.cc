@@ -3,11 +3,11 @@
 #include <cstddef>
 #include <mutex>
 #include <optional>
-#include <raft/core/device_resources.hpp>
-#include <raft/core/device_resources_manager.hpp>
 #include <sstream>
 
 #include "knowhere/log.h"
+#include "raft/core/device_resources.hpp"
+#include "raft/core/device_resources_manager.hpp"
 
 namespace raft_utils {
 void
