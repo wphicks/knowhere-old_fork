@@ -30,7 +30,7 @@ init_gpu_resources(std::optional<std::size_t> streams_per_device = std::nullopt)
             }
             return result;
         }());
-        raft::device_memory_resources::set_streams_per_device(stream_count);
+        raft::device_resources_manager::set_streams_per_device(stream_count);
 
         auto* env_str = getenv("KNOWHERE_GPU_MEM_POOL_SIZE");
         if (env_str != NULL) {
