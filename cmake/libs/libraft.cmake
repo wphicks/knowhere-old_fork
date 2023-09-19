@@ -43,6 +43,7 @@ function(find_and_configure_raft)
     raft
     ${PKG_VERSION}
     GLOBAL_TARGETS
+    raft::raft
     raft_compiled_static
     COMPONENTS
     ${RAFT_COMPONENTS}
