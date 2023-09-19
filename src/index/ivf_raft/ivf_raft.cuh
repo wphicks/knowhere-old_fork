@@ -163,7 +163,7 @@ slice(T* out, T* in, IndexT out_rows, IndexT out_cols, IndexT in_rows, IndexT in
 
 namespace detail {
 using raft_ivf_flat_index = raft::neighbors::ivf_flat::index<float, std::int64_t>;
-using raft_ivf_pq_index = raft::neighbors::ivf_pq::index<std::int64_t>;
+using raft_ivf_pq_index = raft::neighbors::ivf_pq::index<float, std::int64_t>;
 
 namespace codebook {
 auto static constexpr const PER_SUBSPACE = "PER_SUBSPACE";
