@@ -55,6 +55,7 @@ function(find_and_configure_raft)
     SOURCE_SUBDIR
     cpp
     OPTIONS
+    "CUDA_STATIC_RUNTIME ON"
     "BUILD_TESTS OFF"
     "BUILD_BENCH OFF"
     "RAFT_USE_FAISS_STATIC OFF") # Turn this on to build FAISS into your binary
