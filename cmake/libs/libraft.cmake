@@ -31,10 +31,6 @@ set(RAFT_VERSION "${RAPIDS_VERSION}")
 set(RAFT_FORK "rapidsai")
 set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
 
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-  set(CMAKE_CUDA_ARCHITECTURES NATIVE)
-endif()
-
 rapids_cuda_init_architectures(knowhere)
 rapids_cuda_init_runtime(USE_STATIC FALSE)
 
