@@ -32,7 +32,7 @@ set(RAFT_FORK "rapidsai")
 set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
 
 rapids_cuda_init_architectures(knowhere)
-rapids_cuda_init_runtime()
+rapids_cuda_init_runtime(USE_STATIC FALSE)
 
 function(find_and_configure_raft)
   set(oneValueArgs VERSION FORK PINNED_TAG)
