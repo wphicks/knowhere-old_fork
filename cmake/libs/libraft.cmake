@@ -44,7 +44,7 @@ function(find_and_configure_raft)
     ${PKG_VERSION}
     GLOBAL_TARGETS
     raft::raft
-    raft_compiled_static
+    raft_compiled
     COMPONENTS
     ${RAFT_COMPONENTS}
     CPM_ARGS
