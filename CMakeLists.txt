@@ -12,8 +12,14 @@
 # License for the specific language governing permissions and limitations under
 # the License
 
-cmake_minimum_required(VERSION 3.23.0 FATAL_ERROR)
-project(knowhere CXX C)
+if(WITH_RAFT)
+  cmake_minimum_required(VERSION 3.26.1 FATAL_ERROR)
+  include(cmake/libs/libraft.cmake)
+  project(knowhere CXX C CUDA)
+else()
+  cmake_minimum_required(VERSION 3.23.0 FATAL_ERROR)
+  project(knowhere CXX C)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
@@ -73,10 +79,6 @@ find_package(OpenMP REQUIRED)
 find_package(folly REQUIRED)
 set(FOLLY_LIBRARIES Folly::folly)
 include_directories(${folly_INCLUDE_DIRS})
-
-if(WITH_RAFT)
-  include(cmake/libs/libraft.cmake)
-endif()
 
 find_package(nlohmann_json REQUIRED)
 find_package(glog REQUIRED)

@@ -31,6 +31,9 @@ set(RAFT_VERSION "${RAPIDS_VERSION}")
 set(RAFT_FORK "rapidsai")
 set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
 
+rapids_cuda_init_architectures(knowhere)
+rapids_cuda_init_runtime()
+
 function(find_and_configure_raft)
   set(oneValueArgs VERSION FORK PINNED_TAG)
   cmake_parse_arguments(PKG "${options}" "${oneValueArgs}" "${multiValueArgs}"
@@ -55,7 +58,7 @@ function(find_and_configure_raft)
     SOURCE_SUBDIR
     cpp
     OPTIONS
-    "CUDA_STATIC_RUNTIME ON"
+    "CUDA_STATIC_RUNTIME OFF"
     "BUILD_TESTS OFF"
     "BUILD_BENCH OFF"
     "RAFT_USE_FAISS_STATIC OFF") # Turn this on to build FAISS into your binary
