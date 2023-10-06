@@ -64,7 +64,7 @@ struct DeviceBitsetView {
 };
 
 struct DeviceBitset {
-    DeviceBitset(raft::device_resources& res, BitsetView const& other)
+    DeviceBitset(raft::device_resources const& res, BitsetView const& other)
         : storage_{[&res, &other]() {
               auto result = raft::make_device_vector<uint8_t, uint32_t>(res, other.byte_size());
               if (!other.empty()) {

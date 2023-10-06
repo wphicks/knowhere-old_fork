@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-set(RAPIDS_VERSION 23.08)
+set(RAPIDS_VERSION 23.12)
 set(RAFT_VERSION "${RAPIDS_VERSION}")
 set(RAFT_FORK "rapidsai")
 set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")

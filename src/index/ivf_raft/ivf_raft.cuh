@@ -44,11 +44,11 @@ namespace knowhere {
 
 namespace raft_detail {
 struct raft_results {
-    raft_results(raft::device_resources& res)
+    raft_results(raft::device_resources const& res)
         : ids_{raft::make_device_matrix<std::int64_t, std::int64_t>(res, 0, 0)},
           dists_{raft::make_device_matrix<float, std::int64_t>(res, 0, 0)} {
     }
-    raft_results(raft::device_resources& res, std::int64_t rows, std::int64_t k)
+    raft_results(raft::device_resources const& res, std::int64_t rows, std::int64_t k)
         : ids_{raft::make_device_matrix<std::int64_t, std::int64_t>(res, rows, k)},
           dists_{raft::make_device_matrix<float, std::int64_t>(res, rows, k)} {
     }
@@ -521,8 +521,7 @@ class RaftIvfIndexNode : public IndexNode {
         MIN_LOAD_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_, binary->size);
         raft_utils::device_setter with_this_device{this->device_id_};
 
-        raft_utils::init_gpu_resources();
-        auto& res = raft_utils::get_raft_resources();
+        auto res_ = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             T index_ = raft::neighbors::ivf_flat::deserialize<float, std::int64_t>(res, is);
@@ -584,7 +583,7 @@ class RaftIvfIndexNode : public IndexNode {
 
     template <typename raft_search_params_t>
     raft_detail::raft_results
-    RawSearch(raft::device_resources& res, raft::device_matrix_view<const float, std::int64_t> queries,
+    RawSearch(raft::device_resources const& res, raft::device_matrix_view<const float, std::int64_t> queries,
               raft_search_params_t const& search_params, int k, int target_k, DeviceBitsetView const& bitset) const {
         auto max_k = counts_;
         if constexpr (std::is_same_v<detail::raft_ivf_flat_index, T>) {

@@ -18,6 +18,7 @@
 #include "ivf_raft.cuh"
 #include "knowhere/factory.h"
 #include "knowhere/index_node_thread_pool_wrapper.h"
+#include <vector>
 
 constexpr uint32_t cuda_concurrent_size = 32;
 
