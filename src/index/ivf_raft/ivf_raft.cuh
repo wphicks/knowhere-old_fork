@@ -519,7 +519,7 @@ class RaftIvfIndexNode : public IndexNode {
         // status
         is.read((char*)(&this->device_id_), sizeof(this->device_id_));
         MIN_LOAD_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_, binary->size);
-        raft_utils::device_setter with_this_device{this->device_id_};
+        auto scoped_device = raft::device_setter{this->device_id_};
 
         auto res_ = raft::device_resources_manager::get_device_resources();
 
