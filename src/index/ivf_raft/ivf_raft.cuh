@@ -23,6 +23,8 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <raft/core/device_resources_manager.hpp>
+#include <raft/core/device_setter.hpp>
 #include <raft/neighbors/ivf_flat.cuh>
 #include <raft/neighbors/ivf_pq.cuh>
 
@@ -521,7 +523,7 @@ class RaftIvfIndexNode : public IndexNode {
         MIN_LOAD_CHOOSE_DEVICE_WITH_ASSIGN(this->device_id_, binary->size);
         auto scoped_device = raft::device_setter{this->device_id_};
 
-        auto res_ = raft::device_resources_manager::get_device_resources();
+        auto res = raft::device_resources_manager::get_device_resources();
 
         if constexpr (std::is_same_v<T, detail::raft_ivf_flat_index>) {
             T index_ = raft::neighbors::ivf_flat::deserialize<float, std::int64_t>(res, is);
