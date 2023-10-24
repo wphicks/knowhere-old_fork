@@ -7,11 +7,13 @@
 // separate RAFT from knowhere headers.
 struct raft_knowhere_config {
   raft_index_kind index_type;
+  int k = 10;
 
   // Common Parameters
   std::string metric_type = std::string{"L2Expanded"};
   float metric_arg = 2.0f;
   bool add_data_on_build = true;
+  float refine_ratio = 1.0f;
 
   // Shared IVF Parameters
   std::optional<int> nlist = std::nullopt;

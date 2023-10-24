@@ -1,15 +1,26 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <istream>
 #include <optional>
+#include <ostream>
 #include <type_traits>
+#include <raft/neighbors/ivf_flat.cuh>
+#include <raft/neighbors/ivf_flat_serialize.cuh>
+#include <raft/neighbors/ivf_flat_types.hpp>
+#include <raft/neighbors/ivf_pq.cuh>
+#include <raft/neighbors/ivf_pq_serialize.cuh>
+#include <raft/neighbors/ivf_pq_types.hpp>
+#include <raft/neighbors/cagra.cuh>
+#include <raft/neighbors/cagra_serialize.cuh>
+#include <raft/neighbors/cagra_types.hpp>
 #include "index/raft/raft_index_kind.hpp"
 
 namespace raft_proto {
 
-template <template <typename...> typename underlying_index, typename... raft_index_args>
+template <template <typename...> typename underlying_index_type, typename... raft_index_args>
 struct raft_index {
-  using vector_index_type = underlying_index<raft_index_args...>;
+  using vector_index_type = underlying_index_type<raft_index_args...>;
   auto static constexpr vector_index_kind = []() {
     if constexpr (std::is_same_v<
       vector_index_type,
@@ -62,22 +73,18 @@ struct raft_index {
       >
     >
   >;
- private:
-  using self_type = raft_index<underlying_index, raft_index_args...>;
-
- public:
 
   auto& get_vector_index() { return vector_index_; }
   auto const& get_vector_index() const { return vector_index_; }
 
   template <typename T, typename IdxT>
   auto static build(
-    raft::device_resources const& res,
+    raft::resources const& res,
     index_params_type const& index_params,
     raft::device_matrix_view<T const, IdxT> data
   ) {
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
-      return self_type{
+      return raft_index<underlying_index_type, raft_index_args...>{
         raft::neighbors::ivf_flat::build<T, IdxT>(
           res,
           index_params,
@@ -85,7 +92,7 @@ struct raft_index {
         )
       };
     } else if constexpr (vector_index_kind == raft_index_kind::ivf_pq) {
-      return self_type{
+      return raft_index<underlying_index_type, raft_index_args...>{
         raft::neighbors::ivf_pq::build<T, IdxT>(
           res,
           index_params,
@@ -93,7 +100,7 @@ struct raft_index {
         )
       };
     } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
-      return self_type{
+      return raft_index<underlying_index_type, raft_index_args...>{
         raft::neighbors::cagra::build<T>(
           res,
           index_params,
@@ -105,8 +112,8 @@ struct raft_index {
 
   template <typename T, typename IdxT, typename FilterT=std::nullptr_t>
   auto static search(
-    raft::device_resources const& res,
-    self_type const& index,
+    raft::resources const& res,
+    raft_index<underlying_index_type, raft_index_args...> const& index,
     search_params_type const& search_params,
     raft::device_matrix_view<T const, IdxT> queries,
     raft::device_matrix_view<IdxT, IdxT> neighbors,
@@ -244,10 +251,10 @@ struct raft_index {
 
   template <typename T, typename IdxT>
   auto static extend(
-    raft::device_resources const& res,
-    self_type const& index,
+    raft::resources const& res,
+    raft_index<underlying_index_type, raft_index_args...> const& index,
     raft::device_matrix_view<T const, IdxT> new_vectors,
-    std::optional<raft::device_matrix_view<IdxT const, IdxT>> new_ids
+    std::optional<raft::device_vector_view<IdxT const, IdxT>> new_ids
   ) {
     auto const& underlying_index = index.get_vector_index();
 
@@ -275,6 +282,60 @@ struct raft_index {
         new_ids,
         underlying_index
       );
+    }
+  }
+
+  template <typename T, typename IdxT>
+  void static serialize(
+    raft::resources const& res,
+    std::ostream& os,
+    raft_index<underlying_index_type, raft_index_args...> const& index
+  ) {
+    auto const& underlying_index = index.get_vector_index();
+
+    if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
+      return raft::neighbors::ivf_flat::serialize<T, IdxT>(
+        res,
+        os,
+        underlying_index
+      );
+    } else if constexpr (vector_index_kind == raft_index_kind::ivf_pq) {
+      return raft::neighbors::ivf_pq::serialize<IdxT>(
+        res,
+        os,
+        underlying_index
+      );
+    } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
+      return raft::neighbors::cagra::serialize<T, IdxT>(
+        res,
+        os,
+        underlying_index
+      );
+    }
+  }
+
+  template <typename T, typename IdxT>
+  auto static deserialize(
+    raft::resources const& res,
+    std::istream& is,
+  ) {
+    auto const& underlying_index = index.get_vector_index();
+
+    if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
+      return raft_index{raft::neighbors::ivf_flat::serialize<T, IdxT>(
+        res,
+        is
+      )};
+    } else if constexpr (vector_index_kind == raft_index_kind::ivf_pq) {
+      return raft_index{raft::neighbors::ivf_pq::serialize<IdxT>(
+        res,
+        is
+      )};
+    } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
+      return raft_index{raft::neighbors::cagra::serialize<T, IdxT>(
+        res,
+        is
+      )};
     }
   }
 
