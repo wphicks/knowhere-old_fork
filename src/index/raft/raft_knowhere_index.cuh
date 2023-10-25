@@ -1,11 +1,17 @@
 #pragma once
 #include <cstdint>
+#include <ostream>
+#include <istream>
+#include <tuple>
 #include <type_traits>
 #include <raft/core/bitset.cuh>
+#include <raft/core/copy.cuh>
 #include <raft/core/device_resources_manager.hpp>
 #include <raft/distance/distance_types.hpp>
+#include <raft/neighbors/sample_filter.cuh>
 #include "index/raft/raft_index_kind.hpp"
 #include "index/raft/raft_index.cuh"
+#include "index/raft/raft_knowhere_index.hpp"
 
 namespace raft_knowhere {
 namespace detail {
@@ -18,27 +24,27 @@ struct raft_index_type_mapper : std::false_type {
 
 template <>
 struct raft_index_type_mapper<true, raft_index_kind::ivf_flat> : std::true_type {
-  using data_type = float;
-  using indexing_type = std::int64_t;
-  using type = raft_index<raft::neighbors::ivf_flat::index, data_type, indexing_type>;
+  using data_type = raft_data_t<raft_index_kind::ivf_flat>;
+  using indexing_type = raft_indexing_t<raft_index_kind::ivf_flat>;
+  using type = raft_proto::raft_index<raft::neighbors::ivf_flat::index, data_type, indexing_type>;
   using underlying_index_type = typename type::vector_index_type;
   using index_params_type = typename type::index_params_type;
   using search_params_type = typename type::search_params_type;
 };
 template <>
 struct raft_index_type_mapper<true, raft_index_kind::ivf_pq> : std::true_type {
-  using data_type = float;
-  using indexing_type = std::int64_t;
-  using type = raft_index<raft::neighbors::ivf_pq::index, indexing_type>;
+  using data_type = raft_data_t<raft_index_kind::ivf_pq>;
+  using indexing_type = raft_indexing_t<raft_index_kind::ivf_pq>;
+  using type = raft_proto::raft_index<raft::neighbors::ivf_pq::index, indexing_type>;
   using underlying_index_type = typename type::vector_index_type;
   using index_params_type = typename type::index_params_type;
   using search_params_type = typename type::search_params_type;
 }; 
 template <>
 struct raft_index_type_mapper<true, raft_index_kind::cagra> : std::true_type {
-  using data_type = float;
-  using indexing_type = std::uint32_t;
-  using type = raft_index<raft::neighbors::cagra::index, data_type, indexing_type>;
+  using data_type = raft_data_t<raft_index_kind::cagra>;
+  using indexing_type = raft_indexing_t<raft_index_kind::cagra>;
+  using type = raft_proto::raft_index<raft::neighbors::cagra::index, data_type, indexing_type>;
   using underlying_index_type = typename type::vector_index_type;
   using index_params_type = typename type::index_params_type;
   using search_params_type = typename type::search_params_type;
@@ -46,19 +52,8 @@ struct raft_index_type_mapper<true, raft_index_kind::cagra> : std::true_type {
 
 } // namespace detail
 
-using knowhere_data_type = float;
-using knowhere_indexing_type = std::int64_t;
-using knowhere_bitset_data_type = std::uint8_t;
-using knowhere_bitset_indexing_type = std::uint32_t;
-
 template <raft_index_kind IndexKind>
 using raft_index_t = typename detail::raft_index_type_mapper<true, IndexKind>::type;
-
-template <raft_index_kind IndexKind>
-using raft_data_t = typename detail::raft_index_type_mapper<true, IndexKind>::data_type;
-
-template <raft_index_kind IndexKind>
-using raft_indexing_t = typename detail::raft_index_type_mapper<true, IndexKind>::indexing_type;
 
 template <raft_index_kind IndexKind>
 using raft_index_params_t = typename detail::raft_index_type_mapper<true, IndexKind>::index_params_type;
@@ -93,8 +88,8 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
     result = raft::distance::DistanceType::CorrelationExpanded;
   } else if (metric_string == "JaccardExpanded") {
     result = raft::distance::DistanceType::JaccardExpanded;
-  } else if (metric_string == "HeillingerExpanded") {
-    result = raft::distance::DistanceType::HeillingerExpanded;
+  } else if (metric_string == "HellingerExpanded") {
+    result = raft::distance::DistanceType::HellingerExpanded;
   } else if (metric_string == "Haversine") {
     result = raft::distance::DistanceType::Haversine;
   } else if (metric_string == "BrayCurtis") {
@@ -217,10 +212,10 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 template <raft_index_kind IndexKind>
 [[nodiscard]] auto config_to_index_params(raft_knowhere_config const& raw_config) {
   RAFT_EXPECTS(raw_config.index_type == IndexKind, "Incorrect index type for this index");
-  auto config = validate_config(raw_config);
+  auto config = validate_raft_knowhere_config(raw_config);
   auto result = raft_index_params_t<IndexKind>{};
 
-  result.metric = metric_string_to_raft_distance_type(config.metric);
+  result.metric = metric_string_to_raft_distance_type(config.metric_type);
   result.metric_arg = config.metric_arg;
   result.add_data_on_build = config.add_data_on_build;
 
@@ -237,7 +232,7 @@ template <raft_index_kind IndexKind>
   if constexpr (IndexKind == raft_index_kind::ivf_pq) {
     result.pq_dim = *(config.m);
     result.pq_bits = *(config.nbits);
-    result.codebook_kind = codebook_string_to_raft_codebook_gen(config.codebook_gen);
+    result.codebook_kind = codebook_string_to_raft_codebook_gen(*(config.codebook_kind));
     result.force_random_rotation = *(config.force_random_rotation);
   }
   if constexpr (IndexKind == raft_index_kind::cagra) {
@@ -254,20 +249,20 @@ template <raft_index_kind IndexKind>
 template <raft_index_kind IndexKind>
 [[nodiscard]] auto config_to_search_params(raft_knowhere_config const& raw_config) {
   RAFT_EXPECTS(raw_config.index_type == IndexKind, "Incorrect index type for this index");
-  auto config = validate_config(raw_config);
+  auto config = validate_raft_knowhere_config(raw_config);
   auto result = raft_search_params_t<IndexKind>{};
   if constexpr (IndexKind == raft_index_kind::ivf_flat || IndexKind == raft_index_kind::ivf_pq) {
     result.n_probes = *(config.nprobe);
   }
   if constexpr (IndexKind == raft_index_kind::ivf_pq) {
-    result.lut_dtype = dtype_string_to_cuda_dtype(*(config.lookup_dtype));
+    result.lut_dtype = dtype_string_to_cuda_dtype(*(config.lookup_table_dtype));
     result.internal_distance_dtype = dtype_string_to_cuda_dtype(*(config.internal_distance_dtype));
     result.preferred_shmem_carveout = *(config.preferred_shmem_carveout);
   }
   if constexpr (IndexKind == raft_index_kind::cagra) {
     result.max_queries = *(config.max_queries);
     result.max_iterations = *(config.max_iterations);
-    result.search_algo = search_algo_string_to_cagra_search_algo(*(config.search_algo));
+    result.algo = search_algo_string_to_cagra_search_algo(*(config.search_algo));
     result.team_size = *(config.team_size);
     result.search_width = *(config.search_width);
     result.min_iterations = *(config.min_iterations);
@@ -284,54 +279,67 @@ template <raft_index_kind IndexKind>
 // another knowhere header. This ensures that RAFT symbols are not exposed in
 // any knowhere header.
 template <raft_index_kind IndexKind>
-struct raft_knowhere_index {
+struct raft_knowhere_index<IndexKind>::impl {
   auto static constexpr index_kind = IndexKind;
-
-  using raft_index_type = raft_index_t<index_kind>;
-  using index_params_type = raft_index_params_t<index_kind>;
-  using search_params_type = raft_search_params_t<index_kind>;
   using data_type = raft_data_t<index_kind>;
   using indexing_type = raft_indexing_t<index_kind>;
+  using input_indexing_type = raft_input_indexing_t<index_kind>;
+
+  impl() : index_{} {}
+
+ private:
+  using raft_index_type = raft_index_t<index_kind>;
+
+ public:
   auto is_trained() const {
     return index_.has_value();
   }
 
-  auto train(raft_knowhere_config const& config, data_type const* data,
+  void train(raft_knowhere_config const& config, data_type const* data,
       knowhere_indexing_type row_count, knowhere_indexing_type feature_count) {
     auto index_params = config_to_index_params<index_kind>(config);
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
-    auto device_data_storage = raft::make_device_matrix<data_type, indexing_type>(res, row_count, feature_count);
+    auto device_data_storage = raft::make_device_matrix<data_type,
+         input_indexing_type>(res, row_count, feature_count);
     auto device_data = device_data_storage.view();
     raft::copy(res, device_data, host_data);
-    index_ = raft_index_type::build(res, index_params, raft::make_const_mdspan(device_data));
+    index_ = raft_index_type::template build<data_type, indexing_type, input_indexing_type>(res, index_params, raft::make_const_mdspan(device_data));
   }
 
-  auto add(data_type const* data, knowhere_indexing_type row_count, knowhere_indexing_type feature_count, knowhere_indexing_type* new_ids=nullptr) {
+  void add(data_type const* data, knowhere_indexing_type row_count, knowhere_indexing_type feature_count, knowhere_indexing_type* new_ids) {
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
-    auto device_data_storage = raft::make_device_matrix<data_type, indexing_type>(res, row_count, feature_count);
+    auto device_data_storage = raft::make_device_matrix<data_type,
+         input_indexing_type>(res, row_count, feature_count);
     auto device_data = device_data_storage.view();
     raft::copy(res, device_data, host_data);
-    auto device_ids_storage = std::optional<raft::device_vector<indexing_type>>{};
+    auto device_ids_storage = std::optional<raft::device_vector<indexing_type,
+         input_indexing_type>>{};
     if (new_ids != nullptr) {
       auto host_ids = raft::make_host_vector_view(data, row_count);
-      device_ids_storage = raft::make_device_vector<indexing_type, indexing_type>(res, row_count);
+      device_ids_storage = raft::make_device_vector<indexing_type,
+                         input_indexing_type>(res, row_count);
     }
     if (index_) {
-      if (device_ids_storage) {
-        raft_index_type::extend(
-          res,
-          *index_,
-          raft::make_const_mdspan(device_data),
-          raft::make_const_mdspan(device_ids_storage->view())
-        );
+      if constexpr (index_kind == raft_index_kind::cagra) {
+        RAFT_FAIL("CAGRA does not support adding vectors after training");
       } else {
-        raft_index_type::extend(
-          res,
-          *index_,
-          raft::make_const_mdspan(device_data)
-        );
+        if (device_ids_storage) {
+          index_ = raft_index_type::extend(
+            res,
+            raft::make_const_mdspan(device_data),
+            std::make_optional(raft::make_const_mdspan(device_ids_storage->view())),
+            *index_
+          );
+        } else {
+          index_ = raft_index_type::extend(
+            res,
+            raft::make_const_mdspan(device_data),
+            std::optional<raft::device_vector_view<indexing_type const, input_indexing_type>>{},
+            *index_
+          );
+        }
       }
     } else {
       RAFT_FAIL("Index has not yet been trained");
@@ -343,16 +351,17 @@ struct raft_knowhere_index {
     data_type const* data,
     knowhere_indexing_type row_count,
     knowhere_indexing_type feature_count,
-    knowhere_bitset_data_type * bitset_data = nullptr,
-    knowhere_bitset_indexing_type bitset_byte_size = knowhere_bitset_indexing_type{},
-    knowhere_bitset_indexing_type bitset_size = knowhere_bitset_indexing_type{}
+    knowhere_bitset_data_type * bitset_data,
+    knowhere_bitset_indexing_type bitset_byte_size,
+    knowhere_bitset_indexing_type bitset_size
   ) const {
     auto const& res = raft::device_resources_manager::get_device_resources();
-    auto k = config.k;
+    auto k = knowhere_indexing_type(config.k);
     auto search_params = config_to_search_params<index_kind>(config);
 
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
-    auto device_data_storage = raft::make_device_matrix<data_type, indexing_type>(res, row_count, feature_count);
+    auto device_data_storage = raft::make_device_matrix<data_type,
+         input_indexing_type>(res, row_count, feature_count);
     raft::copy(res, device_data_storage.view(), host_data);
 
     auto device_bitset_storage = std::optional<raft::device_vector<knowhere_bitset_data_type, knowhere_bitset_indexing_type>>{};
@@ -368,12 +377,14 @@ struct raft_knowhere_index {
     auto host_ids = raft::make_host_matrix_view(ids.get(), row_count, k);
     auto host_distances = raft::make_host_matrix_view(distances.get(), row_count, k);
 
-    auto device_ids_storage = raft::make_device_matrix<indexing_type, indexing_type>(res, row_count, k);
-    auto device_distances_storage = raft::make_device_matrix<data_type, indexing_type>(res, row_count, k);
+    auto device_ids_storage = raft::make_device_matrix<indexing_type,
+         input_indexing_type>(res, row_count, k);
+    auto device_distances_storage = raft::make_device_matrix<data_type,
+         input_indexing_type>(res, row_count, k);
     auto device_ids = device_ids_storage.view();
     auto device_distances = device_distances_storage.view();
 
-    RAF_EXPECTS(index_, "Index has not yet been trained");
+    RAFT_EXPECTS(index_, "Index has not yet been trained");
 
     if (device_bitset_storage) {
       raft_index_type::search(
@@ -384,8 +395,8 @@ struct raft_knowhere_index {
         device_ids,
         device_distances,
         config.refine_ratio,
-        indexing_type{},
-        std::nullopt,  // TODO(wphicks): Enable refinement
+        input_indexing_type{},
+        std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{},  // TODO(wphicks): Enable refinement
         raft::neighbors::filtering::bitset_filter{
           raft::core::bitset_view{
             device_bitset_storage->view(),
@@ -402,43 +413,108 @@ struct raft_knowhere_index {
         device_ids,
         device_distances,
         config.refine_ratio,
-        indexing_type{},
-        std::nullopt  // TODO(wphicks): Enable refinement
+        input_indexing_type{},
+        std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{}  // TODO(wphicks): Enable refinement
       );
     }
     raft::copy(res, host_ids, device_ids);
     raft::copy(res, host_distances, device_distances);
-    return std::tuple{ids.release(), distances.release()};
+    return std::make_tuple(ids.release(), distances.release());
   }
-  auto range_search() const {
+  void range_search() const {
     RAFT_FAIL("Range search not yet implemented for RAFT indexes");
   }
-  auto get_vector_by_id() const {
+  void get_vector_by_id() const {
     RAFT_FAIL("Vector reconstruction not yet implemented for RAFT indexes");
   }
-  auto serialize(
+  void serialize(
       std::ostream& os
   ) const {
     auto const& res = raft::device_resources_manager::get_device_resources();
     RAFT_EXPECTS(index_, "Index has not yet been trained");
-    raft_index_type::serialize(res, os, *index_);
+    raft_index_type::template serialize<data_type, indexing_type>(res, os, *index_);
   }
   auto static deserialize(
     std::istream& is
   ) {
     auto const& res = raft::device_resources_manager::get_device_resources();
-    return raft_knowhere_index<index_kind>{
-      raft_index_type::deserialize(res, is)
-    };
+    return std::make_unique<typename raft_knowhere_index<index_kind>::impl>(
+      raft_index_type::template deserialize<data_type, indexing_type>(res, is)
+    );
   }
-  auto synchronize() const {
+  void synchronize() const {
     raft::device_resources_manager::get_device_resources().sync_stream();
   }
- private:
-  // TODO(wphicks): Put inside streamsafe_wrapper
-  std::optional<raft_index_type> index_ = std::nullopt;
+  impl(raft_index_type&& index) : index_{std::move(index)} {}
 
-  raft_knowhere_index(raft_index_type index) : index_{std::move(index)} {}
+ private:
+  std::optional<raft_index_type> index_ = std::nullopt;
 };
+
+template <raft_index_kind IndexKind>
+raft_knowhere_index<IndexKind>::raft_knowhere_index() : pimpl{new
+  raft_knowhere_index<IndexKind>::impl()} {}
+
+template <raft_index_kind IndexKind>
+bool raft_knowhere_index<IndexKind>::is_trained() const {
+  return pimpl->is_trained();
+}
+
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::train(
+  raft_knowhere_config const& config,
+  data_type const* data,
+  knowhere_indexing_type row_count,
+  knowhere_indexing_type feature_count
+) {
+  return pimpl->train(config, data, row_count, feature_count);
+}
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::add(
+  data_type const* data,
+  knowhere_indexing_type row_count,
+  knowhere_indexing_type feature_count,
+  knowhere_indexing_type* new_ids
+) {
+  return pimpl->add(data, row_count, feature_count, new_ids);
+}
+template <raft_index_kind IndexKind>
+std::tuple<knowhere_indexing_type*, knowhere_data_type*> raft_knowhere_index<IndexKind>::search(
+  raft_knowhere_config const& config,
+  data_type const* data,
+  knowhere_indexing_type row_count,
+  knowhere_indexing_type feature_count,
+  knowhere_bitset_data_type * bitset_data,
+  knowhere_bitset_indexing_type bitset_byte_size,
+  knowhere_bitset_indexing_type bitset_size
+) const {
+  return pimpl->search(config, data, row_count, feature_count, bitset_data, bitset_byte_size, bitset_size);
+}
+
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::range_search() const {
+  return pimpl->range_search();
+}
+
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::get_vector_by_id() const {
+  return pimpl->get_vector_by_id();
+}
+
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::serialize(std::ostream& os) const {
+  return pimpl->serialize(os);
+}
+
+template <raft_index_kind IndexKind>
+raft_knowhere_index<IndexKind>
+raft_knowhere_index<IndexKind>::deserialize(std::istream& is) {
+  return raft_knowhere_index<IndexKind>(raft_knowhere_index<IndexKind>::impl::deserialize(is));
+}
+
+template <raft_index_kind IndexKind>
+void raft_knowhere_index<IndexKind>::synchronize() const {
+  return pimpl->synchronize();
+}
 
 } // namespace raft_knowhere

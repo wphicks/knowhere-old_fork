@@ -1,0 +1,102 @@
+#pragma once
+#include "index/raft/raft_index_kind.hpp"
+#include "index/raft/raft_knowhere_config.hpp"
+
+namespace raft_knowhere {
+
+using knowhere_data_type = float;
+using knowhere_indexing_type = std::int64_t;
+using knowhere_bitset_data_type = std::uint8_t;
+using knowhere_bitset_indexing_type = std::uint32_t;
+
+namespace detail {
+
+template <bool B, raft_index_kind IndexKind>
+struct raft_io_type_mapper : std::false_type {
+};
+
+template <>
+struct raft_io_type_mapper<true, raft_index_kind::ivf_flat> : std::true_type {
+  using data_type = float;
+  using indexing_type = std::int64_t;
+  using input_indexing_type = std::int64_t;
+};
+
+template <>
+struct raft_io_type_mapper<true, raft_index_kind::ivf_pq> : std::true_type {
+  using data_type = float;
+  using indexing_type = std::int64_t;
+  using input_indexing_type = std::int64_t;
+};
+
+template <>
+struct raft_io_type_mapper<true, raft_index_kind::cagra> : std::true_type {
+  using data_type = float;
+  using indexing_type = std::uint32_t;
+  using input_indexing_type = std::int64_t;
+};
+
+} // namespace detail
+
+template <raft_index_kind IndexKind>
+using raft_data_t = typename detail::raft_io_type_mapper<true, IndexKind>::data_type;
+
+template <raft_index_kind IndexKind>
+using raft_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::indexing_type;
+
+template <raft_index_kind IndexKind>
+using raft_input_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::input_indexing_type;
+
+
+template <raft_index_kind IndexKind>
+struct raft_knowhere_index {
+  auto static constexpr index_kind = IndexKind;
+
+  using data_type = raft_data_t<index_kind>;
+  using indexing_type = raft_indexing_t<index_kind>;
+  using input_indexing_type = raft_input_indexing_t<index_kind>;
+
+  raft_knowhere_index();
+
+  bool is_trained() const;
+
+  void train(
+    raft_knowhere_config const&,
+    data_type const*,
+    knowhere_indexing_type,
+    knowhere_indexing_type
+  );
+  void add(
+    data_type const* data,
+    knowhere_indexing_type row_count,
+    knowhere_indexing_type feature_count,
+    knowhere_indexing_type* new_ids=nullptr
+  );
+  std::tuple<knowhere_indexing_type*, knowhere_data_type*> search(
+    raft_knowhere_config const& config,
+    data_type const* data,
+    knowhere_indexing_type row_count,
+    knowhere_indexing_type feature_count,
+    knowhere_bitset_data_type * bitset_data = nullptr,
+    knowhere_bitset_indexing_type bitset_byte_size = knowhere_bitset_indexing_type{},
+    knowhere_bitset_indexing_type bitset_size = knowhere_bitset_indexing_type{}
+  ) const;
+  void range_search() const;
+  void get_vector_by_id() const;
+  void serialize(std::ostream& os) const;
+  static raft_knowhere_index<IndexKind> deserialize(std::istream& is);
+  void synchronize() const;
+ private:
+  // Use a private implementation to completely separate knowhere headers from
+  // RAFT headers
+  struct impl;
+  std::unique_ptr<impl> pimpl;
+
+  raft_knowhere_index(std::unique_ptr<impl>&& new_pimpl) : pimpl{std::move(new_pimpl)} {}
+};
+
+extern template struct raft_knowhere_index<raft_index_kind::ivf_flat>;
+extern template struct raft_knowhere_index<raft_index_kind::ivf_pq>;
+extern template struct raft_knowhere_index<raft_index_kind::cagra>;
+
+}

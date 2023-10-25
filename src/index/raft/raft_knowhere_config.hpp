@@ -54,17 +54,17 @@ struct raft_knowhere_config {
 
 // The following function provides a single source of truth for default values
 // of RAFT index configurations.
-[[nodiscard]] auto constexpr validate_raft_knowhere_config(raft_knowhere_config config) {
-  if (config.index_type = raft_index_kind::ivf_flat || config.index_type = raft_index_kind::ivf_pq) {
+[[nodiscard]] inline auto validate_raft_knowhere_config(raft_knowhere_config config) {
+  if (config.index_type == raft_index_kind::ivf_flat || config.index_type == raft_index_kind::ivf_pq) {
     config.nlist = config.nlist.value_or(128);
     config.nprobe = config.nprobe.value_or(8);
     config.kmeans_n_iters = config.kmeans_n_iters.value_or(20);
     config.kmeans_trainset_fraction = config.kmeans_trainset_fraction.value_or(0.5f);
   }
-  if (config.index_type = raft_index_kind::ivf_flat) {
+  if (config.index_type == raft_index_kind::ivf_flat) {
     config.adaptive_centers = config.adaptive_centers.value_or(false);
   }
-  if (config.index_type = raft_index_kind::ivf_pq) {
+  if (config.index_type == raft_index_kind::ivf_pq) {
     config.m = config.m.value_or(0);
     config.nbits = config.nbits.value_or(8);
     config.codebook_kind = config.codebook_kind.value_or("PER_SUBSPACE");
@@ -74,7 +74,7 @@ struct raft_knowhere_config {
     config.internal_distance_dtype = config.internal_distance_dtype.value_or("CUDA_R_32F");
     config.preferred_shmem_carveout = config.preferred_shmem_carveout.value_or(1.0f);
   }
-  if (config.index_type = raft_index_kind::CAGRA) {
+  if (config.index_type == raft_index_kind::cagra) {
     config.intermediate_graph_degree = config.intermediate_graph_degree.value_or(128);
     config.graph_degree = config.graph_degree.value_or(64);
     config.itopk_size = config.itopk_size.value_or(64);
