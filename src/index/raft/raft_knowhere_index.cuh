@@ -64,7 +64,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 // coupling between the implementation details of either one.
 [[nodiscard]] inline auto metric_string_to_raft_distance_type(std::string const& metric_string) {
   auto result = raft::distance::DistanceType::L2Expanded;
-  if (metric_string == "L2Expanded") {
+  if (metric_string == "L2") {
     result = raft::distance::DistanceType::L2Expanded;
   } else if (metric_string == "L2SqrtExpanded") {
     result = raft::distance::DistanceType::L2SqrtExpanded;
@@ -76,7 +76,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
     result = raft::distance::DistanceType::L2Unexpanded;
   } else if (metric_string == "L2SqrtUnexpanded") {
     result = raft::distance::DistanceType::L2SqrtUnexpanded;
-  } else if (metric_string == "InnerProduct") {
+  } else if (metric_string == "IP") {
     result = raft::distance::DistanceType::InnerProduct;
   } else if (metric_string == "Linf") {
     result = raft::distance::DistanceType::Linf;
@@ -86,7 +86,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
     result = raft::distance::DistanceType::LpUnexpanded;
   } else if (metric_string == "CorrelationExpanded") {
     result = raft::distance::DistanceType::CorrelationExpanded;
-  } else if (metric_string == "JaccardExpanded") {
+  } else if (metric_string == "JACCARD") {
     result = raft::distance::DistanceType::JaccardExpanded;
   } else if (metric_string == "HellingerExpanded") {
     result = raft::distance::DistanceType::HellingerExpanded;
@@ -96,7 +96,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
     result = raft::distance::DistanceType::BrayCurtis;
   } else if (metric_string == "JensenShannon") {
     result = raft::distance::DistanceType::JensenShannon;
-  } else if (metric_string == "HammingUnexpanded") {
+  } else if (metric_string == "HAMMING") {
     result = raft::distance::DistanceType::HammingUnexpanded;
   } else if (metric_string == "KLDivergence") {
     result = raft::distance::DistanceType::KLDivergence;

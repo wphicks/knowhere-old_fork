@@ -10,7 +10,7 @@ struct raft_knowhere_config {
   int k = 10;
 
   // Common Parameters
-  std::string metric_type = std::string{"L2Expanded"};
+  std::string metric_type = std::string{"L2"};
   float metric_arg = 2.0f;
   bool add_data_on_build = true;
   float refine_ratio = 1.0f;
@@ -82,7 +82,6 @@ struct raft_knowhere_config {
     config.build_algo = config.build_algo.value_or("IVF_PQ");
     config.search_algo = config.search_algo.value_or("AUTO");
     config.team_size = config.team_size.value_or(0);
-    config.hashmap_mode = config.search_algo.value_or("AUTO");
     config.search_width = config.search_width.value_or(1);
     config.min_iterations = config.min_iterations.value_or(0);
     config.max_iterations = config.max_iterations.value_or(0);
