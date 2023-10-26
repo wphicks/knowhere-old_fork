@@ -12,7 +12,7 @@ struct GpuRaftIvfFlatConfig : public IvfFlatConfig {
     CFG_INT kmeans_n_iters;
     CFG_FLOAT kmeans_trainset_fraction;
     CFG_BOOL adaptive_centers;
-    KNOHWERE_DECLARE_CONFIG(RaftIvfFlatConfig) {
+    KNOHWERE_DECLARE_CONFIG(GpuRaftIvfFlatConfig) {
         KNOWHERE_CONFIG_DECLARE_FIELD(k)
             .set_default(10)
             .description("search for top k similar vector.")
@@ -34,7 +34,7 @@ struct GpuRaftIvfFlatConfig : public IvfFlatConfig {
 };
 
 [[nodiscard]] inline auto to_raft_knowhere_config(GpuRaftIvfFlatConfig const& cfg) {
-  auto result = raft_knowhere_config{raft_index_kind::ivf_flat};
+  auto result = raft_knowhere::raft_knowhere_config{raft_proto::raft_index_kind::ivf_flat};
 
   result.metric_type = cfg.metric_type.value();
   result.k = cfg.k.value();

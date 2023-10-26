@@ -11,26 +11,26 @@ using knowhere_bitset_indexing_type = std::uint32_t;
 
 namespace detail {
 
-template <bool B, raft_index_kind IndexKind>
+template <bool B, raft_proto::raft_index_kind IndexKind>
 struct raft_io_type_mapper : std::false_type {
 };
 
 template <>
-struct raft_io_type_mapper<true, raft_index_kind::ivf_flat> : std::true_type {
+struct raft_io_type_mapper<true, raft_proto::raft_index_kind::ivf_flat> : std::true_type {
   using data_type = float;
   using indexing_type = std::int64_t;
   using input_indexing_type = std::int64_t;
 };
 
 template <>
-struct raft_io_type_mapper<true, raft_index_kind::ivf_pq> : std::true_type {
+struct raft_io_type_mapper<true, raft_proto::raft_index_kind::ivf_pq> : std::true_type {
   using data_type = float;
   using indexing_type = std::int64_t;
   using input_indexing_type = std::int64_t;
 };
 
 template <>
-struct raft_io_type_mapper<true, raft_index_kind::cagra> : std::true_type {
+struct raft_io_type_mapper<true, raft_proto::raft_index_kind::cagra> : std::true_type {
   using data_type = float;
   using indexing_type = std::uint32_t;
   using input_indexing_type = std::int64_t;
@@ -38,18 +38,19 @@ struct raft_io_type_mapper<true, raft_index_kind::cagra> : std::true_type {
 
 } // namespace detail
 
-template <raft_index_kind IndexKind>
+template <raft_proto::raft_index_kind IndexKind>
 using raft_data_t = typename detail::raft_io_type_mapper<true, IndexKind>::data_type;
 
-template <raft_index_kind IndexKind>
+template <raft_proto::raft_index_kind IndexKind>
 using raft_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::indexing_type;
 
-template <raft_index_kind IndexKind>
+template <raft_proto::raft_index_kind IndexKind>
 using raft_input_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::input_indexing_type;
 
 
-template <raft_index_kind IndexKind>
+template <raft_proto::raft_index_kind IndexKind>
 struct raft_knowhere_index {
+
   auto static constexpr index_kind = IndexKind;
 
   using data_type = raft_data_t<index_kind>;
@@ -57,6 +58,10 @@ struct raft_knowhere_index {
   using input_indexing_type = raft_input_indexing_t<index_kind>;
 
   raft_knowhere_index();
+  ~raft_knowhere_index();
+
+  raft_knowhere_index(raft_knowhere_index&& other);
+  raft_knowhere_index& operator=(raft_knowhere_index&& other);
 
   bool is_trained() const;
 
@@ -77,7 +82,7 @@ struct raft_knowhere_index {
     data_type const* data,
     knowhere_indexing_type row_count,
     knowhere_indexing_type feature_count,
-    knowhere_bitset_data_type * bitset_data = nullptr,
+    knowhere_bitset_data_type const * bitset_data = nullptr,
     knowhere_bitset_indexing_type bitset_byte_size = knowhere_bitset_indexing_type{},
     knowhere_bitset_indexing_type bitset_size = knowhere_bitset_indexing_type{}
   ) const;
@@ -95,8 +100,8 @@ struct raft_knowhere_index {
   raft_knowhere_index(std::unique_ptr<impl>&& new_pimpl) : pimpl{std::move(new_pimpl)} {}
 };
 
-extern template struct raft_knowhere_index<raft_index_kind::ivf_flat>;
-extern template struct raft_knowhere_index<raft_index_kind::ivf_pq>;
-extern template struct raft_knowhere_index<raft_index_kind::cagra>;
+extern template struct raft_knowhere_index<raft_proto::raft_index_kind::ivf_flat>;
+extern template struct raft_knowhere_index<raft_proto::raft_index_kind::ivf_pq>;
+extern template struct raft_knowhere_index<raft_proto::raft_index_kind::cagra>;
 
 }

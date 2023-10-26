@@ -9,8 +9,23 @@
 namespace knowhere {
 
 struct GpuRaftCagraConfig : public BaseConfig {
+    CFG_INT intermediate_graph_degree;
+    CFG_INT graph_degree;
+    CFG_INT itopk_size;
+    CFG_INT max_queries;
+    CFG_STRING build_algo;
+    CFG_STRING search_algo;
+    CFG_INT team_size;
+    CFG_INT search_width;
+    CFG_INT min_iterations;
+    CFG_INT max_iterations;
+    CFG_INT thread_block_size;
+    CFG_STRING hashmap_mode;
+    CFG_INT hashmap_min_bitlen;
+    CFG_FLOAT hashmap_max_fill_rate;
+    CFG_INT nn_descent_niter;
 
-    KNOHWERE_DECLARE_CONFIG(RaftCagraConfig) {
+    KNOHWERE_DECLARE_CONFIG(GpuRaftCagraConfig) {
         KNOWHERE_CONFIG_DECLARE_FIELD(intermediate_graph_degree)
             .description("degree of intermediate knn graph")
             .set_default(128)
@@ -77,7 +92,7 @@ struct GpuRaftCagraConfig : public BaseConfig {
 };
 
 [[nodiscard]] inline auto to_raft_knowhere_config(GpuRaftCagraConfig const& cfg) {
-  auto result = raft_knowhere_config{raft_index_kind::cagra};
+  auto result = raft_knowhere::raft_knowhere_config{raft_proto::raft_index_kind::cagra};
 
   result.metric_type = cfg.metric_type.value();
   result.k = cfg.k.value();

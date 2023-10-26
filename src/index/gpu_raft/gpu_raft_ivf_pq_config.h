@@ -19,7 +19,7 @@ struct GpuRaftIvfPqConfig : public IvfPqConfig {
     CFG_STRING internal_distance_dtype;
     CFG_FLOAT preferred_shmem_carveout;
 
-    KNOHWERE_DECLARE_CONFIG(RaftIvfPqConfig) {
+    KNOHWERE_DECLARE_CONFIG(GpuRaftIvfPqConfig) {
         KNOWHERE_CONFIG_DECLARE_FIELD(k)
             .set_default(10)
             .description("search for top k similar vector.")
@@ -73,7 +73,7 @@ struct GpuRaftIvfPqConfig : public IvfPqConfig {
 };
 
 [[nodiscard]] inline auto to_raft_knowhere_config(GpuRaftIvfPqConfig const& cfg) {
-  auto result = raft_knowhere_config{raft_index_kind::ivf_pq};
+  auto result = raft_knowhere::raft_knowhere_config{raft_proto::raft_index_kind::ivf_pq};
 
   result.metric_type = cfg.metric_type.value();
   result.k = cfg.k.value();
