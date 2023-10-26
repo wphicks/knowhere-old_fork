@@ -276,7 +276,7 @@ template <raft_proto::raft_index_kind IndexKind>
   return result;
 }
 
-auto select_device_id() {
+inline auto select_device_id() {
   auto static device_count = []() {
     auto result = 0;
     RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
