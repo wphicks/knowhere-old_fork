@@ -1,6 +1,6 @@
 #pragma once
-#include "index/raft/raft_index_kind.hpp"
-#include "index/raft/raft_knowhere_config.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
+#include "common/raft/integration/raft_knowhere_config.hpp"
 
 namespace raft_knowhere {
 

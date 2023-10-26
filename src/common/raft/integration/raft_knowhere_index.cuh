@@ -9,9 +9,9 @@
 #include <raft/core/device_resources_manager.hpp>
 #include <raft/distance/distance_types.hpp>
 #include <raft/neighbors/sample_filter.cuh>
-#include "index/raft/raft_index_kind.hpp"
-#include "index/raft/raft_index.cuh"
-#include "index/raft/raft_knowhere_index.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
+#include "common/raft/proto/raft_index.cuh"
+#include "common/raft/integration/raft_knowhere_index.hpp"
 
 namespace raft_knowhere {
 namespace detail {

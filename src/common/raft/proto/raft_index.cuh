@@ -15,7 +15,7 @@
 #include <raft/neighbors/cagra.cuh>
 #include <raft/neighbors/cagra_serialize.cuh>
 #include <raft/neighbors/cagra_types.hpp>
-#include "index/raft/raft_index_kind.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
 
 namespace raft_proto {
 

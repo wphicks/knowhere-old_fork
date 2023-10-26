@@ -2,7 +2,7 @@
 #include <optional>
 #include <string>
 
-#include "index/raft/raft_index_kind.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
 
 namespace raft_knowhere {
 // This struct includes all parameters that may be passed to underlying RAFT

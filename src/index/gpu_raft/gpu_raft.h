@@ -9,9 +9,9 @@
 #include "index/gpu_raft/gpu_raft_ivf_flat_config.h"
 #include "index/gpu_raft/gpu_raft_ivf_pq_config.h"
 
-#include "index/raft/raft_index_kind.hpp"
-#include "index/raft/raft_knowhere_index.hpp"
-#include "index/raft/raft_knowhere_config.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
+#include "common/raft/integration/raft_knowhere_index.hpp"
+#include "common/raft/integration/raft_knowhere_config.hpp"
 
 #include "knowhere/comp/index_param.h"
 #include "knowhere/device_bitset.h"

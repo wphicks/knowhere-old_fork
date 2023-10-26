@@ -16,7 +16,7 @@
  */
 
 #include "gpu_raft.h"
-#include "index/raft/raft_index_kind.hpp"
+#include "common/raft/proto/raft_index_kind.hpp"
 #include "knowhere/factory.h"
 #include "knowhere/index_node_thread_pool_wrapper.h"
 #include <vector>
