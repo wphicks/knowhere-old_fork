@@ -7,6 +7,7 @@
 #include <raft/core/bitset.cuh>
 #include <raft/core/copy.cuh>
 #include <raft/core/device_resources_manager.hpp>
+#include <raft/core/device_setter.hpp>
 #include <raft/distance/distance_types.hpp>
 #include <raft/neighbors/sample_filter.cuh>
 #include "common/raft/proto/raft_index_kind.hpp"
@@ -275,6 +276,18 @@ template <raft_proto::raft_index_kind IndexKind>
   return result;
 }
 
+auto select_device_id() {
+  auto static device_count = []() {
+    auto result = 0;
+    RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
+    RAFT_EXPECTS(result != 0, "No CUDA devices found");
+    return result;
+  }();
+  auto static index_counter = std::atomic<int>{0};
+  // Use round-robin assignment to distribute indexes across devices
+  return index_counter.fetch_add(1) % device_count;
+}
+
 // This struct is used to connect knowhere to a RAFT index. The implementation
 // is provided here, but this header should never be directly included in
 // another knowhere header. This ensures that RAFT symbols are not exposed in
@@ -286,7 +299,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   using indexing_type = raft_indexing_t<index_kind>;
   using input_indexing_type = raft_input_indexing_t<index_kind>;
 
-  impl() : index_{} {}
+  impl() {}
 
  private:
   using raft_index_type = raft_index_t<index_kind>;
@@ -298,6 +311,7 @@ struct raft_knowhere_index<IndexKind>::impl {
 
   void train(raft_knowhere_config const& config, data_type const* data,
       knowhere_indexing_type row_count, knowhere_indexing_type feature_count) {
+    auto scoped_device = raft::device_setter{device_id};
     auto index_params = config_to_index_params<index_kind>(config);
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
@@ -356,6 +370,7 @@ struct raft_knowhere_index<IndexKind>::impl {
     knowhere_bitset_indexing_type bitset_byte_size,
     knowhere_bitset_indexing_type bitset_size
   ) const {
+    auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto k = knowhere_indexing_type(config.k);
     auto search_params = config_to_search_params<index_kind>(config);
@@ -431,6 +446,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   void serialize(
       std::ostream& os
   ) const {
+    auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
     RAFT_EXPECTS(index_, "Index has not yet been trained");
     raft_index_type::template serialize<data_type, indexing_type>(res, os, *index_);
@@ -438,18 +454,24 @@ struct raft_knowhere_index<IndexKind>::impl {
   auto static deserialize(
     std::istream& is
   ) {
+    auto new_device_id = select_device_id();
+    auto scoped_device = raft::device_setter{new_device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
     return std::make_unique<typename raft_knowhere_index<index_kind>::impl>(
-      raft_index_type::template deserialize<data_type, indexing_type>(res, is)
+      raft_index_type::template deserialize<data_type, indexing_type>(res, is),
+      new_device_id
     );
   }
   void synchronize() const {
+    auto scoped_device = raft::device_setter{device_id};
     raft::device_resources_manager::get_device_resources().sync_stream();
   }
-  impl(raft_index_type&& index) : index_{std::move(index)} {}
+  impl(raft_index_type&& index, int new_device_id) : index_{std::move(index)},
+    device_id{new_device_id} {}
 
  private:
   std::optional<raft_index_type> index_ = std::nullopt;
+  int device_id = select_device_id();
 };
 
 template <raft_proto::raft_index_kind IndexKind>
