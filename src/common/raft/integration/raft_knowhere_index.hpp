@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include "common/raft/proto/raft_index_kind.hpp"
 #include "common/raft/integration/raft_knowhere_config.hpp"
 
@@ -47,7 +48,6 @@ using raft_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::i
 template <raft_proto::raft_index_kind IndexKind>
 using raft_input_indexing_t = typename detail::raft_io_type_mapper<true, IndexKind>::input_indexing_type;
 
-
 template <raft_proto::raft_index_kind IndexKind>
 struct raft_knowhere_index {
 
@@ -64,6 +64,8 @@ struct raft_knowhere_index {
   raft_knowhere_index& operator=(raft_knowhere_index&& other);
 
   bool is_trained() const;
+  std::int64_t size() const;
+  std::int64_t dim() const;
 
   void train(
     raft_knowhere_config const&,
@@ -75,7 +77,7 @@ struct raft_knowhere_index {
     data_type const* data,
     knowhere_indexing_type row_count,
     knowhere_indexing_type feature_count,
-    knowhere_indexing_type* new_ids=nullptr
+    knowhere_indexing_type const* new_ids=nullptr
   );
   std::tuple<knowhere_indexing_type*, knowhere_data_type*> search(
     raft_knowhere_config const& config,

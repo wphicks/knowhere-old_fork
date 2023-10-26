@@ -308,6 +308,20 @@ struct raft_knowhere_index<IndexKind>::impl {
   auto is_trained() const {
     return index_.has_value();
   }
+  [[nodiscard]] auto size() const {
+    auto result = std::int64_t{};
+    if (is_trained()) {
+      result = index_->size();
+    } 
+    return result;
+  }
+  [[nodiscard]] auto dim() const {
+    auto result = std::int64_t{};
+    if (is_trained()) {
+      result = index_->dim();
+    } 
+    return result;
+  }
 
   void train(raft_knowhere_config const& config, data_type const* data,
       knowhere_indexing_type row_count, knowhere_indexing_type feature_count) {
@@ -322,7 +336,8 @@ struct raft_knowhere_index<IndexKind>::impl {
     index_ = raft_index_type::template build<data_type, indexing_type, input_indexing_type>(res, index_params, raft::make_const_mdspan(device_data));
   }
 
-  void add(data_type const* data, knowhere_indexing_type row_count, knowhere_indexing_type feature_count, knowhere_indexing_type* new_ids) {
+  void add(data_type const* data, knowhere_indexing_type row_count,
+      knowhere_indexing_type feature_count, knowhere_indexing_type const* new_ids) {
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
     auto device_data_storage = raft::make_device_matrix<data_type,
@@ -332,9 +347,10 @@ struct raft_knowhere_index<IndexKind>::impl {
     auto device_ids_storage = std::optional<raft::device_vector<indexing_type,
          input_indexing_type>>{};
     if (new_ids != nullptr) {
-      auto host_ids = raft::make_host_vector_view(data, row_count);
+      auto host_ids = raft::make_host_vector_view(new_ids, row_count);
       device_ids_storage = raft::make_device_vector<indexing_type,
                          input_indexing_type>(res, row_count);
+      raft::copy(res, device_ids_storage->view(), host_ids);
     }
     if (index_) {
       if constexpr (index_kind == raft_proto::raft_index_kind::cagra) {
@@ -496,6 +512,16 @@ bool raft_knowhere_index<IndexKind>::is_trained() const {
 }
 
 template <raft_proto::raft_index_kind IndexKind>
+std::int64_t raft_knowhere_index<IndexKind>::size() const {
+  return pimpl->size();
+}
+
+template <raft_proto::raft_index_kind IndexKind>
+std::int64_t raft_knowhere_index<IndexKind>::dim() const {
+  return pimpl->dim();
+}
+
+template <raft_proto::raft_index_kind IndexKind>
 void raft_knowhere_index<IndexKind>::train(
   raft_knowhere_config const& config,
   data_type const* data,
@@ -509,7 +535,7 @@ void raft_knowhere_index<IndexKind>::add(
   data_type const* data,
   knowhere_indexing_type row_count,
   knowhere_indexing_type feature_count,
-  knowhere_indexing_type* new_ids
+  knowhere_indexing_type const* new_ids
 ) {
   return pimpl->add(data, row_count, feature_count, new_ids);
 }

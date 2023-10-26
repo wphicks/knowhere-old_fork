@@ -85,8 +85,14 @@ struct raft_index {
     >
   >;
 
-  auto& get_vector_index() { return vector_index_; }
-  auto const& get_vector_index() const { return vector_index_; }
+  [[nodiscard]] auto& get_vector_index() { return vector_index_; }
+  [[nodiscard]] auto const& get_vector_index() const { return vector_index_; }
+  [[nodiscard]] auto size() const {
+    return vector_index_.size();
+  }
+  [[nodiscard]] auto dim() const {
+    return vector_index_.dim();
+  }
 
   template <typename T, typename IdxT, typename InputIdxT>
   auto static build(
@@ -559,5 +565,9 @@ struct tiered_index {
     );
   }
 }; */
+
+extern template struct raft_index<raft::neighbors::ivf_flat::index, float, std::int64_t>;
+extern template struct raft_index<raft::neighbors::ivf_pq::index, std::int64_t>;
+extern template struct raft_index<raft::neighbors::cagra::index, float, std::uint32_t>;
 
 }  // namespace raft_proto

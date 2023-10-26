@@ -3,7 +3,9 @@
 
 #include <cstdint>
 #include <exception>
+#include <numeric>
 #include <tuple>
+#include <vector>
 
 #include "index/gpu_raft/gpu_raft_cagra_config.h"
 #include "index/gpu_raft/gpu_raft_ivf_flat_config.h"
@@ -74,8 +76,6 @@ struct GpuRaftIndexNode : public IndexNode {
         LOG_KNOWHERE_ERROR_ << e.what();
         result = Status::raft_inner_error;
       }
-      dim_ = dim;
-      counts_ = rows;
     }
     return result;
   }
@@ -88,15 +88,15 @@ struct GpuRaftIndexNode : public IndexNode {
       auto rows = dataset.GetRows();
       auto dim = dataset.GetDim();
       auto const* data = reinterpret_cast<float const*>(dataset.GetTensor());
+      auto new_ids = std::vector<int64_t>(rows);
+      std::iota(std::begin(new_ids), std::end(new_ids), index_.size());
       try {
-        index_.add(data, rows, dim);
+        index_.add(data, rows, dim, new_ids.data());
         index_.synchronize();
       } catch (const std::exception& e) {
         LOG_KNOWHERE_ERROR_ << e.what();
         return Status::raft_inner_error;
       }
-      dim_ = dim;
-      counts_ += rows;
       return Status::success;
     }
   }
@@ -173,8 +173,6 @@ struct GpuRaftIndexNode : public IndexNode {
     } else {
       std::ostream os(&buf);
 
-      os.write((char*)(&this->dim_), sizeof(this->dim_));
-      os.write((char*)(&this->counts_), sizeof(this->counts_));
       try {
         index_.serialize(os);
         index_.synchronize();
@@ -204,8 +202,6 @@ struct GpuRaftIndexNode : public IndexNode {
       buf.sputn((char*)binary->data.get(), binary->size);
       std::istream is(&buf);
 
-      is.read((char*)(&this->dim_), sizeof(this->dim_));
-      is.read((char*)(&this->counts_), sizeof(this->counts_));
       try {
         index_ = raft_knowhere_index_type::deserialize(is);
         index_.synchronize();
@@ -240,7 +236,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   int64_t
   Dim() const override {
-    return dim_;
+    return index_.dim();
   }
 
   int64_t
@@ -250,7 +246,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   int64_t
   Count() const override {
-    return counts_;
+    return index_.size();
   }
 
   std::string
@@ -267,9 +263,6 @@ struct GpuRaftIndexNode : public IndexNode {
 
  private:
   using raft_knowhere_index_type = typename raft_knowhere::raft_knowhere_index<K>;
-
-  int64_t dim_ = 0;
-  int64_t counts_ = 0;
 
   raft_knowhere_index_type index_;
 };
