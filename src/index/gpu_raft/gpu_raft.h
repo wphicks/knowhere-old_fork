@@ -14,7 +14,6 @@
 #include "common/raft/integration/raft_knowhere_config.hpp"
 
 #include "knowhere/comp/index_param.h"
-#include "knowhere/device_bitset.h"
 #include "knowhere/expected.h"
 #include "knowhere/factory.h"
 #include "knowhere/log.h"
@@ -98,6 +97,7 @@ struct GpuRaftIndexNode : public IndexNode {
       }
       dim_ = dim;
       counts_ += rows;
+      return Status::success;
     }
   }
 
