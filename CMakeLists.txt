@@ -96,9 +96,7 @@ if(WITH_COVERAGE)
 endif()
 
 knowhere_file_glob(GLOB_RECURSE KNOWHERE_SRCS src/common/*.cc src/index/*.cc
-                   src/io/*.cc src/index/*.cu src/common/raft/*.cu
-                   src/common/raft/*.cc src/index/raft/*.cc src/index/raft/*.cu
-                   src/index/gpu_raft/*.cc)
+                   src/io/*.cc src/common/*.cu src/index/*.cu src/io/*.cu)
 
 set(KNOWHERE_LINKER_LIBS "")
 
@@ -115,8 +113,7 @@ knowhere_file_glob(GLOB_RECURSE KNOWHERE_GPU_SRCS src/index/gpu/flat_gpu/*.cc
 list(REMOVE_ITEM KNOWHERE_SRCS ${KNOWHERE_GPU_SRCS})
 
 if(NOT WITH_RAFT)
-  knowhere_file_glob(GLOB_RECURSE KNOWHERE_RAFT_SRCS src/index/ivf_raft/*.cc
-                     src/index/ivf_raft/*.cu src/index/cagra/*.cu
+  knowhere_file_glob(GLOB_RECURSE KNOWHERE_RAFT_SRCS
                      src/common/raft/*.cu src/common/raft/*.cc
                      src/index/raft/*.cu src/index/raft/*.cc
                      src/index/gpu_raft/*.cc)
