@@ -328,6 +328,7 @@ struct raft_knowhere_index<IndexKind>::impl {
     auto scoped_device = raft::device_setter{device_id};
     auto index_params = config_to_index_params<index_kind>(config);
     auto const& res = raft::device_resources_manager::get_device_resources();
+    raft::resource::set_workspace_to_pool_resource(res);
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
     auto device_data_storage = raft::make_device_matrix<data_type,
          input_indexing_type>(res, row_count, feature_count);
@@ -339,6 +340,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   void add(data_type const* data, knowhere_indexing_type row_count,
       knowhere_indexing_type feature_count, knowhere_indexing_type const* new_ids) {
     auto const& res = raft::device_resources_manager::get_device_resources();
+    raft::resource::set_workspace_to_pool_resource(res);
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
     auto device_data_storage = raft::make_device_matrix<data_type,
          input_indexing_type>(res, row_count, feature_count);
@@ -388,18 +390,25 @@ struct raft_knowhere_index<IndexKind>::impl {
   ) const {
     auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
+    raft::resource::set_workspace_to_pool_resource(res);
     auto k = knowhere_indexing_type(config.k);
     auto search_params = config_to_search_params<index_kind>(config);
 
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
     auto device_data_storage = raft::make_device_matrix<data_type,
          input_indexing_type>(res, row_count, feature_count);
+    std::cout << "A" << std::endl;
     raft::copy(res, device_data_storage.view(), host_data);
+    res.sync_stream();
+    std::cout << "B" << std::endl;
 
     auto device_bitset_storage = std::optional<raft::device_vector<knowhere_bitset_data_type, knowhere_bitset_indexing_type>>{};
     if(bitset_data != nullptr && bitset_byte_size != 0) {
       device_bitset_storage = raft::make_device_vector<knowhere_bitset_data_type, knowhere_bitset_indexing_type>(res, bitset_byte_size);
+      std::cout << "C" << std::endl;
       raft::copy(res, device_bitset_storage->view(), raft::make_host_vector_view(bitset_data, bitset_byte_size));
+      res.sync_stream();
+      std::cout << "D" << std::endl;
     }
 
     auto output_size = row_count * k;
@@ -418,6 +427,10 @@ struct raft_knowhere_index<IndexKind>::impl {
 
     RAFT_EXPECTS(index_, "Index has not yet been trained");
 
+    std::cout << "D1" << std::endl;
+    std::cout << device_data_storage.extent(0) << " " << device_data_storage.extent(1) << std::endl;
+    std::cout << device_ids.extent(0) << " " << device_ids.extent(1) << std::endl;
+    std::cout << device_distances.extent(0) << " " << device_distances.extent(1) << std::endl;
     if (device_bitset_storage) {
       raft_index_type::search(
         res,
@@ -449,8 +462,14 @@ struct raft_knowhere_index<IndexKind>::impl {
         std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{}  // TODO(wphicks): Enable refinement
       );
     }
+    std::cout << "E" << std::endl;
     raft::copy(res, host_ids, device_ids);
+    res.sync_stream();
+    std::cout << "F" << std::endl;
+    std::cout << "G" << std::endl;
     raft::copy(res, host_distances, device_distances);
+    res.sync_stream();
+    std::cout << "H" << std::endl;
     return std::make_tuple(ids.release(), distances.release());
   }
   void range_search() const {
@@ -464,6 +483,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   ) const {
     auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
+    raft::resource::set_workspace_to_pool_resource(res);
     RAFT_EXPECTS(index_, "Index has not yet been trained");
     raft_index_type::template serialize<data_type, indexing_type>(res, os, *index_);
   }
@@ -473,6 +493,7 @@ struct raft_knowhere_index<IndexKind>::impl {
     auto new_device_id = select_device_id();
     auto scoped_device = raft::device_setter{new_device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
+    raft::resource::set_workspace_to_pool_resource(res);
     return std::make_unique<typename raft_knowhere_index<index_kind>::impl>(
       raft_index_type::template deserialize<data_type, indexing_type>(res, is),
       new_device_id

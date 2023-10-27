@@ -36,4 +36,4 @@ message(STATUS "INIT: ${CMAKE_CUDA_ARCHITECTURES}")
 rapids_cpm_init()
 
 set(CMAKE_CUDA_FLAGS
-    "${CMAKE_CUDA_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr --threads=4")
+    "${CMAKE_CUDA_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")

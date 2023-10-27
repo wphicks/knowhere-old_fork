@@ -119,6 +119,15 @@ struct raft_index {
         )
       };
     } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
+      std::cout << "INDEX PARAMS: {\n";
+      // std::cout << "  metric: " << index_params.metric << ",\n";
+      std::cout << "  metric_arg: " << index_params.metric_arg << ",\n";
+      std::cout << "  add_data_on_build: " << index_params.add_data_on_build << ",\n";
+      std::cout << "  intermediate_graph_degree: " << index_params.intermediate_graph_degree << ",\n";
+      std::cout << "  graph_degree: " << index_params.graph_degree << ",\n";
+      // std::cout << "  build_algo: " << index_params.build_algo << ",\n";
+      std::cout << "  nn_descent_niter: " << index_params.nn_descent_niter << ",\n";
+      std::cout << "}\n\n";
       return raft_index<underlying_index_type, raft_index_args...>{
         raft::neighbors::cagra::build<T>(
           res,
@@ -172,6 +181,10 @@ struct raft_index {
       distances_tmp = distances_storage->view();
     }
 
+    std::cout << "aa" << std::endl;
+    std::cout << "queries " << queries.data_handle() << std::endl;
+    std::cout << "neighbors_tmp " << neighbors_tmp.data_handle() << std::endl;
+    std::cout << "distances_tmp " << distances_tmp.data_handle() << std::endl;
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
       if constexpr (std::is_same_v<FilterT, std::nullptr_t>){
         raft::neighbors::ivf_flat::search<T, IdxT>(
@@ -204,14 +217,14 @@ struct raft_index {
       }
     } else if constexpr (vector_index_kind == raft_index_kind::ivf_pq) {
       if constexpr (std::is_same_v<FilterT, std::nullptr_t>){
-        raft::neighbors::ivf_pq::search<T, IdxT>(
+        /* raft::neighbors::ivf_pq::search<T, IdxT>(
           res,
           search_params,
           underlying_index,
           queries,
           neighbors_tmp,
           distances_tmp
-        );
+        ); */
       } else {
         /* raft::neighbors::ivf_pq::search_with_filtering<T, IdxT>(
           res,
@@ -223,17 +236,79 @@ struct raft_index {
           filter
         ); */
         // TODO(wphicks): re-enable filtering
-        raft::neighbors::ivf_pq::search<T, IdxT>(
+        /*raft::neighbors::ivf_pq::search<T, IdxT>(
           res,
           search_params,
           underlying_index,
           queries,
           neighbors_tmp,
           distances_tmp
-        );
+        ); */
       }
     } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
       if constexpr (std::is_same_v<FilterT, std::nullptr_t>){
+        std::cout << "SEARCH PARAMS: {\n";
+        std::cout << "  max_queries: " << search_params.max_queries << ",\n";
+        std::cout << "  itopk_size: " << search_params.itopk_size << ",\n";
+        std::cout << "  max_iterations: " << search_params.max_iterations << ",\n";
+        // std::cout << "  search_algo: " << search_params.algo << ",\n";
+        std::cout << "  search_width: " << search_params.search_width << ",\n";
+        std::cout << "  min_iterations: " << search_params.min_iterations << ",\n";
+        std::cout << "  thread_block_size: " << search_params.thread_block_size << ",\n";
+        // std::cout << "  hashmap_mode: " << search_params.hashmap_mode << ",\n";
+        std::cout << "  hashmap_min_bitlen: " << search_params.hashmap_min_bitlen << ",\n";
+        std::cout << "  hashmap_max_fill_rate: " << search_params.hashmap_max_fill_rate << ",\n";
+        std::cout << "  num_random_samplings: " << search_params.num_random_samplings << ",\n";
+        std::cout << "  rand_xor_mask: " << search_params.rand_xor_mask << ",\n";
+        std::cout << "}\n\n";
+
+        std::cout << "INDEX PROPERTIES: {\n";
+        // std::cout << "  metric: " << underlying_index.metric() << ",\n";
+        std::cout << "  uses_uint32_index: " << std::is_same_v<IdxT, std::uint32_t> << ",\n";
+        std::cout << "  size: " << underlying_index.size() << ",\n";
+        std::cout << "  dim: " << underlying_index.dim() << ",\n";
+        std::cout << "  graph_degree: " << underlying_index.graph_degree() << ",\n";
+        std::cout << "  dataset_extents: [" << underlying_index.dataset().extent(0) << ", " << underlying_index.dataset().extent(1) << "],\n";
+        std::cout << "  dataset_strides: [" << underlying_index.dataset().stride(0) << ", " << underlying_index.dataset().stride(1) << "],\n";
+        std::cout << "  graph_extents: [" << underlying_index.graph().extent(0) << ", " << underlying_index.graph().extent(1) << "],\n";
+        std::cout << "}\n\n";
+
+        auto is_device_ptr = [] (auto* ptr) {
+          auto result = false;
+          auto ptr_attributes = cudaPointerAttributes{};
+          if (
+            cudaPointerGetAttributes(&ptr_attributes, (void const*) ptr)
+            == cudaSuccess
+          ) {
+            result = ptr_attributes.type == cudaMemoryTypeDevice;
+          }
+          return result;
+        };
+
+        std::cout << "QUERIES INPUT: {\n";
+        std::cout << "  data_is_on_device: " << is_device_ptr(queries.data_handle()) << ",\n";
+        std::cout << "  data_is_float: " << std::is_same_v<typename decltype(queries)::value_type, float> << ",\n";
+        std::cout << "  index_is_int64: " << std::is_same_v<typename
+          decltype(queries)::index_type, std::int64_t> << ",\n";
+        std::cout << "  extents: [" << queries.extent(0) << ", " << queries.extent(1) << "],\n";
+        std::cout << "}\n\n";
+
+        std::cout << "NEIGHBORS OUTPUT: {\n";
+        std::cout << "  data_is_on_device: " << is_device_ptr(neighbors_tmp.data_handle()) << ",\n";
+        std::cout << "  data_is_uint32: " << std::is_same_v<typename decltype(neighbors_tmp)::value_type, std::uint32_t> << ",\n";
+        std::cout << "  index_is_int64: " << std::is_same_v<typename
+          decltype(neighbors_tmp)::index_type, std::int64_t> << ",\n";
+        std::cout << "  extents: [" << neighbors_tmp.extent(0) << ", " << neighbors_tmp.extent(1) << "],\n";
+        std::cout << "}\n\n";
+
+        std::cout << "DISTANCES OUTPUT: {\n";
+        std::cout << "  data_is_on_device: " << is_device_ptr(distances_tmp.data_handle()) << ",\n";
+        std::cout << "  data_is_float: " << std::is_same_v<typename decltype(distances_tmp)::value_type, float> << ",\n";
+        std::cout << "  index_is_int64: " << std::is_same_v<typename
+          decltype(distances_tmp)::index_type, std::int64_t> << ",\n";
+        std::cout << "  extents: [" << neighbors_tmp.extent(0) << ", " << neighbors_tmp.extent(1) << "],\n";
+        std::cout << "}\n\n";
+
         raft::neighbors::cagra::search<T, IdxT>(
           res,
           search_params,
@@ -277,6 +352,7 @@ struct raft_index {
         );
       } */
     }
+    std::cout << "bb" << std::endl;
     if (k_tmp > k) {
       // TODO(wphicks): Take into account k_offset
       raft::copy(

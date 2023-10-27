@@ -83,7 +83,7 @@ struct raft_knowhere_config {
     config.intermediate_graph_degree = config.intermediate_graph_degree.value_or(128);
     config.graph_degree = config.graph_degree.value_or(64);
     config.itopk_size = config.itopk_size.value_or(64);
-    config.max_queries = config.max_queries.value_or(0);
+    config.max_queries = config.max_queries.value_or(65536);
     config.build_algo = config.build_algo.value_or("IVF_PQ");
     config.search_algo = config.search_algo.value_or("AUTO");
     config.team_size = config.team_size.value_or(0);
