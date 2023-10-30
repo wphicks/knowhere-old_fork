@@ -5,6 +5,7 @@
 #include <optional>
 #include <ostream>
 #include <type_traits>
+#include <nvtx3/nvtx3.hpp>
 #include <raft/core/logger.hpp>
 #include <raft/neighbors/ivf_flat.cuh>
 #include <raft/neighbors/ivf_flat_serialize.cuh>
@@ -102,6 +103,7 @@ struct raft_index {
       T const, InputIdxT
     > data
   ) {
+    NVTX3_FUNC_RANGE();
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
       return raft_index<underlying_index_type, raft_index_args...>{
         raft::neighbors::ivf_flat::build<T, IdxT>(
@@ -142,6 +144,7 @@ struct raft_index {
     std::optional<raft::device_matrix_view<const T, InputIdxT>> dataset = std::nullopt,
     FilterT filter = nullptr
   ) {
+    NVTX3_FUNC_RANGE();
     auto const& underlying_index = index.get_vector_index();
 
     auto k = neighbors.extent(1);
@@ -278,6 +281,7 @@ struct raft_index {
       } */
     }
     if (k_tmp > k) {
+      auto search_copy_range = nvtx3::scoped_range("search_copy_range");
       // TODO(wphicks): Take into account k_offset
       raft::copy(
         res,
@@ -299,6 +303,7 @@ struct raft_index {
     std::optional<raft::device_vector_view<IdxT const, InputIdxT>> new_ids,
     raft_index<underlying_index_type, raft_index_args...>& index
   ) {
+    NVTX3_FUNC_RANGE();
     auto const& underlying_index = index.get_vector_index();
 
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
@@ -326,6 +331,7 @@ struct raft_index {
     std::ostream& os,
     raft_index<underlying_index_type, raft_index_args...> const& index
   ) {
+    NVTX3_FUNC_RANGE();
     auto const& underlying_index = index.get_vector_index();
 
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
@@ -354,6 +360,7 @@ struct raft_index {
     raft::resources const& res,
     std::istream& is
   ) {
+    NVTX3_FUNC_RANGE();
     if constexpr (vector_index_kind == raft_index_kind::ivf_flat) {
       return raft_index{raft::neighbors::ivf_flat::deserialize<T, IdxT>(
         res,

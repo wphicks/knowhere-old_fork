@@ -4,6 +4,7 @@
 #include <istream>
 #include <tuple>
 #include <type_traits>
+#include <nvtx3/nvtx3.hpp>
 #include <raft/core/bitset.cuh>
 #include <raft/core/copy.cuh>
 #include <raft/core/device_resources_manager.hpp>
@@ -64,6 +65,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 // Metrics are passed between knowhere and RAFT as strings to avoid tight
 // coupling between the implementation details of either one.
 [[nodiscard]] inline auto metric_string_to_raft_distance_type(std::string const& metric_string) {
+  NVTX3_FUNC_RANGE();
   auto result = raft::distance::DistanceType::L2Expanded;
   if (metric_string == "L2") {
     result = raft::distance::DistanceType::L2Expanded;
@@ -114,6 +116,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 }
 
 [[nodiscard]] inline auto codebook_string_to_raft_codebook_gen(std::string const& codebook_string) {
+  NVTX3_FUNC_RANGE();
   auto result = raft::neighbors::ivf_pq::codebook_gen::PER_SUBSPACE;
   if (codebook_string == "PER_SUBSPACE") {
     result = raft::neighbors::ivf_pq::codebook_gen::PER_SUBSPACE;
@@ -126,6 +129,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 }
 [[nodiscard]] inline auto build_algo_string_to_cagra_build_algo(std::string
     const& algo_string) {
+  NVTX3_FUNC_RANGE();
   auto result = raft::neighbors::cagra::graph_build_algo::IVF_PQ;
   if (algo_string == "IVF_PQ") {
     result = raft::neighbors::cagra::graph_build_algo::IVF_PQ;
@@ -139,6 +143,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 
 [[nodiscard]] inline auto search_algo_string_to_cagra_search_algo(std::string
     const& algo_string) {
+  NVTX3_FUNC_RANGE();
   auto result = raft::neighbors::cagra::search_algo::AUTO;
   if (algo_string == "SINGLE_CTA") {
     result = raft::neighbors::cagra::search_algo::SINGLE_CTA;
@@ -156,6 +161,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 
 [[nodiscard]] inline auto hashmap_mode_string_to_cagra_hashmap_mode(std::string
     const& mode_string) {
+  NVTX3_FUNC_RANGE();
   auto result = raft::neighbors::cagra::hash_mode::AUTO;
   if (mode_string == "HASH") {
     result = raft::neighbors::cagra::hash_mode::HASH;
@@ -171,6 +177,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 
 [[nodiscard]] inline auto dtype_string_to_cuda_dtype(std::string
     const& dtype_string) {
+  NVTX3_FUNC_RANGE();
   auto result = CUDA_R_32F;
   if (dtype_string == "CUDA_R_16F") {
     result = CUDA_R_16F;
@@ -212,6 +219,7 @@ using raft_search_params_t = typename detail::raft_index_type_mapper<true, Index
 // parameters
 template <raft_proto::raft_index_kind IndexKind>
 [[nodiscard]] auto config_to_index_params(raft_knowhere_config const& raw_config) {
+  NVTX3_FUNC_RANGE();
   RAFT_EXPECTS(raw_config.index_type == IndexKind, "Incorrect index type for this index");
   auto config = validate_raft_knowhere_config(raw_config);
   auto result = raft_index_params_t<IndexKind>{};
@@ -249,6 +257,7 @@ template <raft_proto::raft_index_kind IndexKind>
 // parameters
 template <raft_proto::raft_index_kind IndexKind>
 [[nodiscard]] auto config_to_search_params(raft_knowhere_config const& raw_config) {
+  NVTX3_FUNC_RANGE();
   RAFT_EXPECTS(raw_config.index_type == IndexKind, "Incorrect index type for this index");
   auto config = validate_raft_knowhere_config(raw_config);
   auto result = raft_search_params_t<IndexKind>{};
@@ -277,6 +286,7 @@ template <raft_proto::raft_index_kind IndexKind>
 }
 
 inline auto check_mem_pool_initialized() {
+  NVTX3_FUNC_RANGE();
   auto static const result = []() {
     // TODO(wphicks): read environment variable for memory pool sizes
     raft::device_resources_manager::set_mem_pool();
@@ -286,6 +296,7 @@ inline auto check_mem_pool_initialized() {
 }
 
 inline auto select_device_id_raw() {
+  NVTX3_FUNC_RANGE();
   auto static device_count = []() {
     auto result = 0;
     if (check_mem_pool_initialized()) {
@@ -301,6 +312,7 @@ inline auto select_device_id_raw() {
 }
 
 inline auto select_device_id() {
+  NVTX3_FUNC_RANGE();
   auto result = select_device_id_raw();
   auto thread_local const initialized = [result]() {
     auto scoped_device = raft::device_setter{result};
@@ -351,6 +363,7 @@ struct raft_knowhere_index<IndexKind>::impl {
 
   void train(raft_knowhere_config const& config, data_type const* data,
       knowhere_indexing_type row_count, knowhere_indexing_type feature_count) {
+    NVTX3_FUNC_RANGE();
     auto scoped_device = raft::device_setter{device_id};
     auto index_params = config_to_index_params<index_kind>(config);
     auto const& res = raft::device_resources_manager::get_device_resources();
@@ -418,6 +431,7 @@ struct raft_knowhere_index<IndexKind>::impl {
     knowhere_bitset_indexing_type bitset_byte_size,
     knowhere_bitset_indexing_type bitset_size
   ) const {
+    NVTX3_FUNC_RANGE();
     auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto k = knowhere_indexing_type(config.k);
@@ -494,6 +508,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   void serialize(
       std::ostream& os
   ) const {
+    NVTX3_FUNC_RANGE();
     auto scoped_device = raft::device_setter{device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
     RAFT_EXPECTS(index_, "Index has not yet been trained");
@@ -502,6 +517,7 @@ struct raft_knowhere_index<IndexKind>::impl {
   auto static deserialize(
     std::istream& is
   ) {
+    NVTX3_FUNC_RANGE();
     auto new_device_id = select_device_id();
     auto scoped_device = raft::device_setter{new_device_id};
     auto const& res = raft::device_resources_manager::get_device_resources();
@@ -511,6 +527,7 @@ struct raft_knowhere_index<IndexKind>::impl {
     );
   }
   void synchronize() const {
+    NVTX3_FUNC_RANGE();
     auto scoped_device = raft::device_setter{device_id};
     raft::device_resources_manager::get_device_resources().sync_stream();
   }

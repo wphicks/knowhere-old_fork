@@ -6,6 +6,7 @@
 #include <numeric>
 #include <tuple>
 #include <vector>
+#include <nvtx3/nvtx3.hpp>
 
 #include "index/gpu_raft/gpu_raft_cagra_config.h"
 #include "index/gpu_raft/gpu_raft_ivf_flat_config.h"
@@ -52,6 +53,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Train(const DataSet& dataset, const Config& cfg) override {
+    NVTX3_FUNC_RANGE();
     auto result = Status::success;
     auto raft_cfg = raft_knowhere::raft_knowhere_config{};
     try {
@@ -82,6 +84,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Add(const DataSet& dataset, const Config& cfg) override {
+    NVTX3_FUNC_RANGE();
     if constexpr(index_kind == raft_proto::raft_index_kind::cagra || index_kind == raft_proto::raft_index_kind::ivf_pq) {
       return Status::success;
     } else {
@@ -103,6 +106,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   expected<DataSetPtr>
   Search(const DataSet& dataset, const Config& cfg, const BitsetView& bitset) const override {
+    NVTX3_FUNC_RANGE();
     auto result = Status::success;
     auto raft_cfg = raft_knowhere::raft_knowhere_config{};
     auto err_msg = std::string{};
@@ -166,6 +170,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Serialize(BinarySet& binset) const override {
+    NVTX3_FUNC_RANGE();
     auto result = Status::success;
     std::stringbuf buf;
     if (!index_.is_trained()) {
@@ -192,6 +197,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Deserialize(const BinarySet& binset, const Config& config) override {
+    NVTX3_FUNC_RANGE();
     auto result = Status::success;
     std::stringbuf buf;
     auto binary = binset.GetByName(this->Type());
@@ -251,6 +257,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   std::string
   Type() const override {
+    NVTX3_FUNC_RANGE();
       if constexpr (index_kind == raft_proto::raft_index_kind::ivf_flat) {
           return knowhere::IndexEnum::INDEX_RAFT_IVFFLAT;
       } else if constexpr (index_kind == raft_proto::raft_index_kind::ivf_pq) {
