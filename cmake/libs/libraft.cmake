@@ -45,7 +45,6 @@ function(find_and_configure_raft)
     OPTIONS
     "BUILD_TESTS OFF"
     "BUILD_BENCH OFF"
-    "RAFT_NVTX ON"
     "RAFT_USE_FAISS_STATIC OFF") # Turn this on to build FAISS into your binary
 
     if(raft_ADDED)
