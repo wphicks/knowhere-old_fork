@@ -272,6 +272,7 @@ template <raft_proto::raft_index_kind IndexKind>
   }
   if constexpr (IndexKind == raft_proto::raft_index_kind::cagra) {
     result.max_queries = *(config.max_queries);
+    result.itopk_size = *(config.itopk_size);
     result.max_iterations = *(config.max_iterations);
     result.algo = search_algo_string_to_cagra_search_algo(*(config.search_algo));
     result.team_size = *(config.team_size);
@@ -289,7 +290,7 @@ inline auto check_mem_pool_initialized() {
   NVTX3_FUNC_RANGE();
   auto static const result = []() {
     // TODO(wphicks): read environment variable for memory pool sizes
-    raft::device_resources_manager::set_mem_pool();
+    // raft::device_resources_manager::set_mem_pool();
     return true;
   }();
   return result;
