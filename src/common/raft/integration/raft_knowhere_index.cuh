@@ -276,16 +276,42 @@ template <raft_proto::raft_index_kind IndexKind>
   return result;
 }
 
-inline auto select_device_id() {
+inline auto check_mem_pool_initialized() {
+  auto static const result = []() {
+    // TODO(wphicks): read environment variable for memory pool sizes
+    raft::device_resources_manager::set_mem_pool();
+    return true;
+  }();
+  return result;
+}
+
+inline auto select_device_id_raw() {
   auto static device_count = []() {
     auto result = 0;
-    RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
-    RAFT_EXPECTS(result != 0, "No CUDA devices found");
+    if (check_mem_pool_initialized()) {
+      RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
+      RAFT_EXPECTS(result != 0, "No CUDA devices found");
+    }
     return result;
   }();
   auto static index_counter = std::atomic<int>{0};
   // Use round-robin assignment to distribute indexes across devices
-  return index_counter.fetch_add(1) % device_count;
+  auto result = index_counter.fetch_add(1) % device_count;
+  return result;
+}
+
+inline auto select_device_id() {
+  auto result = select_device_id_raw();
+  auto thread_local const initialized = [result]() {
+    auto scoped_device = raft::device_setter{result};
+    // Initialize the workspace to the default pool
+    auto const& res = raft::device_resources_manager::get_device_resources();
+    if (rmm::mr::cuda_memory_resource{}.is_equal(*raft::resource::get_workspace_resource(res)->get_upstream())) {
+      raft::resource::set_workspace_to_pool_resource(res);
+    }
+    return true;
+  }();
+  return result;
 }
 
 // This struct is used to connect knowhere to a RAFT index. The implementation
@@ -329,33 +355,39 @@ struct raft_knowhere_index<IndexKind>::impl {
     auto index_params = config_to_index_params<index_kind>(config);
     auto const& res = raft::device_resources_manager::get_device_resources();
     auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
-    auto device_data_storage = raft::make_device_matrix<data_type,
-         input_indexing_type>(res, row_count, feature_count);
-    auto device_data = device_data_storage.view();
+    device_dataset_storage = raft::make_device_matrix<data_type, input_indexing_type>(res, row_count, feature_count);
+    auto device_data = device_dataset_storage->view();
     raft::copy(res, device_data, host_data);
     index_ = raft_index_type::template build<data_type, indexing_type, input_indexing_type>(res, index_params, raft::make_const_mdspan(device_data));
   }
 
   void add(data_type const* data, knowhere_indexing_type row_count,
       knowhere_indexing_type feature_count, knowhere_indexing_type const* new_ids) {
-    auto const& res = raft::device_resources_manager::get_device_resources();
-    auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
-    auto device_data_storage = raft::make_device_matrix<data_type,
-         input_indexing_type>(res, row_count, feature_count);
-    auto device_data = device_data_storage.view();
-    raft::copy(res, device_data, host_data);
-    auto device_ids_storage = std::optional<raft::device_vector<indexing_type,
-         input_indexing_type>>{};
-    if (new_ids != nullptr) {
-      auto host_ids = raft::make_host_vector_view(new_ids, row_count);
-      device_ids_storage = raft::make_device_vector<indexing_type,
-                         input_indexing_type>(res, row_count);
-      raft::copy(res, device_ids_storage->view(), host_ids);
-    }
-    if (index_) {
-      if constexpr (index_kind == raft_proto::raft_index_kind::cagra) {
+    if constexpr (index_kind == raft_proto::raft_index_kind::cagra) {
+      if (index_) {
         RAFT_FAIL("CAGRA does not support adding vectors after training");
-      } else {
+      }
+    } else if constexpr (index_kind == raft_proto::raft_index_kind::ivf_pq){
+      if (index_) {
+        RAFT_FAIL("IVFPQ does not support adding vectors after training");
+      }
+    } else {
+      if (index_) {
+        auto const& res = raft::device_resources_manager::get_device_resources();
+        raft::resource::set_workspace_to_pool_resource(res);
+        auto host_data = raft::make_host_matrix_view(data, row_count, feature_count);
+        device_dataset_storage = raft::make_device_matrix<data_type, input_indexing_type>(res, row_count, feature_count);
+        auto device_data = device_dataset_storage->view();
+        raft::copy(res, device_data, host_data);
+        auto device_ids_storage = std::optional<raft::device_vector<indexing_type,
+             input_indexing_type>>{};
+        if (new_ids != nullptr) {
+          auto host_ids = raft::make_host_vector_view(new_ids, row_count);
+          device_ids_storage = raft::make_device_vector<indexing_type,
+                             input_indexing_type>(res, row_count);
+          raft::copy(res, device_ids_storage->view(), host_ids);
+        }
+
         if (device_ids_storage) {
           index_ = raft_index_type::extend(
             res,
@@ -371,9 +403,9 @@ struct raft_knowhere_index<IndexKind>::impl {
             *index_
           );
         }
+      } else {
+        RAFT_FAIL("Index has not yet been trained");
       }
-    } else {
-      RAFT_FAIL("Index has not yet been trained");
     }
   }
 
@@ -488,6 +520,7 @@ struct raft_knowhere_index<IndexKind>::impl {
  private:
   std::optional<raft_index_type> index_ = std::nullopt;
   int device_id = select_device_id();
+  std::optional<raft::device_matrix<data_type, input_indexing_type>> device_dataset_storage = std::nullopt;
 };
 
 template <raft_proto::raft_index_kind IndexKind>

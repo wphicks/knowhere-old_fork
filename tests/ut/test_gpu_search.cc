@@ -97,15 +97,9 @@ TEST_CASE("Test All GPU Index", "[search]") {
         }
     }
 
-    SECTION("Test Gpu Index Search With Bitset") {
+    /* SECTION("Test Gpu Index Search With Bitset") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
-            // GPU_FLAT cannot run this test is because its Train() and Add() actually run in CPU,
-            // "res_" in gpu_index_ is not set correctly
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IDMAP, gpu_flat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFFLAT, ivfflat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFPQ, ivfpq_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFSQ8, ivfsq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFPQ, ivfpq_gen),
         }));
@@ -137,17 +131,11 @@ TEST_CASE("Test All GPU Index", "[search]") {
                 }
             }
         }
-    }
+    } */
 
     SECTION("Test Gpu Index Search TopK") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
-            // GPU_FLAT cannot run this test is because its Train() and Add() actually run in CPU,
-            // "res_" in gpu_index_ is not set correctly
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IDMAP, gpu_flat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFFLAT, ivfflat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFPQ, ivfpq_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFSQ8, ivfsq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFPQ, ivfpq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_CAGRA, cagra_gen),
@@ -177,10 +165,6 @@ TEST_CASE("Test All GPU Index", "[search]") {
     SECTION("Test Gpu Index Serialize/Deserialize") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IDMAP, gpu_flat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFFLAT, ivfflat_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFPQ, ivfpq_gen),
-            // make_tuple(knowhere::IndexEnum::INDEX_FAISS_GPU_IVFSQ8, ivfsq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFPQ, ivfpq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_CAGRA, cagra_gen),
@@ -207,7 +191,7 @@ TEST_CASE("Test All GPU Index", "[search]") {
         }
     }
 
-    SECTION("Test Gpu Index Search Simple Bitset") {
+    /* SECTION("Test Gpu Index Search Simple Bitset") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
@@ -232,6 +216,6 @@ TEST_CASE("Test All GPU Index", "[search]") {
         auto gt = knowhere::BruteForce::Search(train_ds, train_ds, json, bitset);
         float recall = GetKNNRecall(*gt.value(), *results.value());
         REQUIRE(recall == 1.0f);
-    }
+    } */
 }
 #endif

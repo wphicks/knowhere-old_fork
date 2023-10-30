@@ -82,8 +82,8 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Add(const DataSet& dataset, const Config& cfg) override {
-    if constexpr(index_kind == raft_proto::raft_index_kind::cagra) {
-      return index_.is_trained() ? Status::index_already_trained : Status::success;
+    if constexpr(index_kind == raft_proto::raft_index_kind::cagra || index_kind == raft_proto::raft_index_kind::ivf_pq) {
+      return Status::success;
     } else {
       auto rows = dataset.GetRows();
       auto dim = dataset.GetDim();

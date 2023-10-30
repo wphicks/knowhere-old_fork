@@ -566,8 +566,4 @@ struct tiered_index {
   }
 }; */
 
-extern template struct raft_index<raft::neighbors::ivf_flat::index, float, std::int64_t>;
-extern template struct raft_index<raft::neighbors::ivf_pq::index, std::int64_t>;
-extern template struct raft_index<raft::neighbors::cagra::index, float, std::uint32_t>;
-
 }  // namespace raft_proto

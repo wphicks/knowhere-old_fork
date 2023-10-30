@@ -28,7 +28,7 @@ struct GpuRaftIvfPqConfig : public IvfPqConfig {
         KNOWHERE_CONFIG_DECLARE_FIELD(m)
             .set_default(8)
             .description("m")
-            .set_range(8, 65536)  // Declared in base but limited here
+            .set_range(0, 65536)
             .for_train();
         KNOWHERE_CONFIG_DECLARE_FIELD(nbits)
             .set_default(0)
