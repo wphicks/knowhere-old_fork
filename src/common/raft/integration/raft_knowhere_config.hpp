@@ -59,7 +59,7 @@ struct raft_knowhere_config {
 // of RAFT index configurations.
 [[nodiscard]] inline auto validate_raft_knowhere_config(raft_knowhere_config config) {
   if (config.index_type == raft_proto::raft_index_kind::ivf_flat || config.index_type == raft_proto::raft_index_kind::ivf_pq) {
-    config.add_data_on_build = false;
+    config.add_data_on_build = true;
     config.nlist = config.nlist.value_or(128);
     config.nprobe = config.nprobe.value_or(8);
     config.kmeans_n_iters = config.kmeans_n_iters.value_or(20);

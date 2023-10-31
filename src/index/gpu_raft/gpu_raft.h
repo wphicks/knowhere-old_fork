@@ -82,23 +82,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   Status
   Add(const DataSet& dataset, const Config& cfg) override {
-    if constexpr(index_kind == raft_proto::raft_index_kind::cagra || index_kind == raft_proto::raft_index_kind::ivf_pq) {
-      return Status::success;
-    } else {
-      auto rows = dataset.GetRows();
-      auto dim = dataset.GetDim();
-      auto const* data = reinterpret_cast<float const*>(dataset.GetTensor());
-      auto new_ids = std::vector<int64_t>(rows);
-      std::iota(std::begin(new_ids), std::end(new_ids), index_.size());
-      try {
-        index_.add(data, rows, dim, new_ids.data());
-        index_.synchronize();
-      } catch (const std::exception& e) {
-        LOG_KNOWHERE_ERROR_ << e.what();
-        return Status::raft_inner_error;
-      }
-      return Status::success;
-    }
+    return Status::success;
   }
 
   expected<DataSetPtr>
@@ -276,5 +260,5 @@ using GpuRaftIvfPqIndexNode = GpuRaftIndexNode<raft_proto::raft_index_kind::ivf_
 using GpuRaftCagraIndexNode = GpuRaftIndexNode<raft_proto::raft_index_kind::cagra>;
 
 }  // namespace knowhere
-   //
+
 #endif /* GPU_RAFT_H */

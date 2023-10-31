@@ -277,41 +277,16 @@ template <raft_proto::raft_index_kind IndexKind>
   return result;
 }
 
-inline auto check_mem_pool_initialized() {
-  auto static const result = []() {
-    // TODO(wphicks): read environment variable for memory pool sizes
-    // raft::device_resources_manager::set_mem_pool();
-    return true;
-  }();
-  return result;
-}
-
-inline auto select_device_id_raw() {
+inline auto select_device_id() {
   auto static device_count = []() {
     auto result = 0;
-    if (check_mem_pool_initialized()) {
-      RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
-      RAFT_EXPECTS(result != 0, "No CUDA devices found");
-    }
+    RAFT_CUDA_TRY(cudaGetDeviceCount(&result));
+    RAFT_EXPECTS(result != 0, "No CUDA devices found");
     return result;
   }();
   auto static index_counter = std::atomic<int>{0};
   // Use round-robin assignment to distribute indexes across devices
   auto result = index_counter.fetch_add(1) % device_count;
-  return result;
-}
-
-inline auto select_device_id() {
-  auto result = select_device_id_raw();
-  auto thread_local const initialized = [result]() {
-    auto scoped_device = raft::device_setter{result};
-    // Initialize the workspace to the default pool
-    auto const& res = raft::device_resources_manager::get_device_resources();
-    if (rmm::mr::cuda_memory_resource{}.is_equal(*raft::resource::get_workspace_resource(res)->get_upstream())) {
-      raft::resource::set_workspace_to_pool_resource(res);
-    }
-    return true;
-  }();
   return result;
 }
 
