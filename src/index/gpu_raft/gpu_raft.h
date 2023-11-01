@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <exception>
+#include <fstream>
+#include <istream>
 #include <numeric>
 #include <tuple>
 #include <vector>
@@ -185,25 +187,15 @@ struct GpuRaftIndexNode : public IndexNode {
     } else {
       buf.sputn((char*)binary->data.get(), binary->size);
       std::istream is(&buf);
-
-      try {
-        index_ = raft_knowhere_index_type::deserialize(is);
-        index_.synchronize();
-      } catch (const std::exception& e) {
-        LOG_KNOWHERE_ERROR_ << e.what();
-        result = Status::raft_inner_error;
-      }
-      is.sync();
+      result = DeserializeFromStream(is);
     }
     return result;
   }
 
   Status
   DeserializeFromFile(const std::string& filename, const Config& config) {
-    // TODO(wphicks): This is simple to implement by just opening an ifstream
-    // and casting to an istream then following the same steps as above
-    LOG_KNOWHERE_ERROR_ << "RaftIvfIndex doesn't support Deserialization from file.";
-    return Status::not_implemented;
+    auto stream = std::ifstream{filename};
+    return DeserializeFromStream(stream);
   }
 
 
@@ -249,6 +241,20 @@ struct GpuRaftIndexNode : public IndexNode {
   using raft_knowhere_index_type = typename raft_knowhere::raft_knowhere_index<K>;
 
   raft_knowhere_index_type index_;
+
+  Status
+  DeserializeFromStream(std::istream& stream) {
+    auto result = Status::success;
+    try {
+      index_ = raft_knowhere_index_type::deserialize(stream);
+      index_.synchronize();
+    } catch (const std::exception& e) {
+      LOG_KNOWHERE_ERROR_ << e.what();
+      result = Status::raft_inner_error;
+    }
+    stream.sync();
+    return result;
+  }
 };
 
 extern template struct GpuRaftIndexNode<raft_proto::raft_index_kind::ivf_flat>;
