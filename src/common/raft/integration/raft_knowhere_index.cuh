@@ -404,10 +404,13 @@ struct raft_knowhere_index<IndexKind>::impl {
          input_indexing_type>(res, row_count, feature_count);
     raft::copy(res, device_data_storage.view(), host_data);
 
-    auto device_bitset_storage = std::optional<raft::device_vector<knowhere_bitset_data_type, knowhere_bitset_indexing_type>>{};
+    auto device_bitset = std::optional<raft::core::bitset<knowhere_bitset_data_type, knowhere_bitset_indexing_type>>{};
+
     if(bitset_data != nullptr && bitset_byte_size != 0) {
-      device_bitset_storage = raft::make_device_vector<knowhere_bitset_data_type, knowhere_bitset_indexing_type>(res, bitset_byte_size);
-      raft::copy(res, device_bitset_storage->view(), raft::make_host_vector_view(bitset_data, bitset_byte_size));
+      device_bitset = raft::core::bitset<knowhere_bitset_data_type,
+                    knowhere_bitset_indexing_type>(res, bitset_size);
+      raft::copy(res, device_bitset->to_mdspan(), raft::make_host_vector_view(bitset_data, bitset_byte_size));
+      device_bitset->flip(res);
     }
 
     auto output_size = row_count * k;
@@ -426,7 +429,7 @@ struct raft_knowhere_index<IndexKind>::impl {
 
     RAFT_EXPECTS(index_, "Index has not yet been trained");
 
-    if (device_bitset_storage) {
+    if (device_bitset) {
       raft_index_type::search(
         res,
         *index_,
@@ -437,11 +440,8 @@ struct raft_knowhere_index<IndexKind>::impl {
         config.refine_ratio,
         input_indexing_type{},
         std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{},  // TODO(wphicks): Enable refinement
-        raft::neighbors::filtering::bitset_filter{
-          raft::core::bitset_view{
-            device_bitset_storage->view(),
-            bitset_byte_size
-          }
+        raft::neighbors::filtering::bitset_filter<knowhere_bitset_data_type, knowhere_bitset_indexing_type>{
+          device_bitset->view()
         }
       );
     } else {

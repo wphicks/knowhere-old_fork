@@ -16,6 +16,7 @@
 #include <raft/neighbors/cagra_serialize.cuh>
 #include <raft/neighbors/cagra_types.hpp>
 #include "common/raft/proto/raft_index_kind.hpp"
+#include "common/raft/proto/ivf_to_sample_filter.cuh"
 
 namespace raft_proto {
 
@@ -183,23 +184,16 @@ struct raft_index {
           distances_tmp
         );
       } else {
-        /*raft::neighbors::ivf_flat::search_with_filtering<T, IdxT>(
+        raft::neighbors::ivf_flat::search_with_filtering<T, IdxT>(
           res,
           search_params,
           underlying_index,
           queries,
           neighbors_tmp,
           distances_tmp,
-          filter
-        ); */
-        // TODO(wphicks): re-enable filtering
-        raft::neighbors::ivf_flat::search<T, IdxT>(
-          res,
-          search_params,
-          underlying_index,
-          queries,
-          neighbors_tmp,
-          distances_tmp
+          ivf_to_sample_filter{
+            underlying_index.inds_ptrs().data_handle(), filter
+          }
         );
       }
     } else if constexpr (vector_index_kind == raft_index_kind::ivf_pq) {
@@ -213,23 +207,16 @@ struct raft_index {
           distances_tmp
         );
       } else {
-        /* raft::neighbors::ivf_pq::search_with_filtering<T, IdxT>(
+        raft::neighbors::ivf_pq::search_with_filtering<T, IdxT>(
           res,
           search_params,
           underlying_index,
           queries,
           neighbors_tmp,
           distances_tmp,
-          filter
-        ); */
-        // TODO(wphicks): re-enable filtering
-        raft::neighbors::ivf_pq::search<T, IdxT>(
-          res,
-          search_params,
-          underlying_index,
-          queries,
-          neighbors_tmp,
-          distances_tmp
+          ivf_to_sample_filter{
+            underlying_index.inds_ptrs().data_handle(), filter
+          }
         );
       }
     } else if constexpr (vector_index_kind == raft_index_kind::cagra) {
