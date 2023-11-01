@@ -14,9 +14,6 @@
 # the License.
 
 set(RAPIDS_VERSION 23.12)
-set(RAFT_VERSION "${RAPIDS_VERSION}")
-set(RAFT_FORK "rapidsai")
-set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
 
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
   file(

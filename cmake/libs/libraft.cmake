@@ -14,6 +14,10 @@
 # the License.
 
 add_definitions(-DKNOWHERE_WITH_RAFT)
+set(RAFT_VERSION "${RAPIDS_VERSION}")
+set(RAFT_FORK "rapidsai")
+set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
+
 
 rapids_find_package(CUDAToolkit REQUIRED
   BUILD_EXPORT_SET knowhere-exports
