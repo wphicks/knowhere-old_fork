@@ -242,40 +242,30 @@ struct raft_index {
       }
     }
     if (refine_ratio > 1.0f) {
-        RAFT_LOG_WARN(
-          "Refinement requested, but refinement is not yet implemented. "
-          "Ignoring refinement request."
-        );
-      // TODO(wphicks): re-enable refinement
-      /* if (dataset.has_value()) {
-        raft::neighbors::refine(
-          res,
-          *dataset,
-          queries,
-          raft::make_const_mdspan(neighbors_tmp),
-          neighbors,
-          distances,
-          underlying_index.metric()
-        );
+      if constexpr (vector_index_kind != raft_index_kind::cagra) {
+        if (dataset.has_value()) {
+          raft::neighbors::refine(
+            res,
+            *dataset,
+            queries,
+            raft::make_const_mdspan(neighbors_tmp),
+            neighbors,
+            distances,
+            underlying_index.metric()
+          );
+        } else {
+          RAFT_LOG_WARN(
+            "Refinement requested, but no dataset provided. "
+            "Ignoring refinement request."
+          );
+        }
       } else {
+        // TODO(wphicks): Determine why CAGRA refinement fails to compile
         RAFT_LOG_WARN(
-          "Refinement requested, but no dataset provided. "
-          "Ignoring refinement request."
+          "Refinement requested, but refinement is not yet implemented for "
+          "CAGRA. Ignoring refinement request."
         );
-      } */
-    }
-    if (k_tmp > k) {
-      // TODO(wphicks): Take into account k_offset
-      raft::copy(
-        res,
-        neighbors,
-        raft::make_device_matrix_view(neighbors_tmp.data_handle(), neighbors.extent(0), k)
-      );
-      raft::copy(
-        res,
-        distances,
-        raft::make_device_matrix_view(distances_tmp.data_handle(), distances.extent(0), k)
-      );
+      }
     }
   }
 

@@ -9,10 +9,15 @@
 namespace knowhere {
 
 struct GpuRaftIvfFlatConfig : public IvfFlatConfig {
+    CFG_FLOAT refine_ratio;
     CFG_INT kmeans_n_iters;
     CFG_FLOAT kmeans_trainset_fraction;
     CFG_BOOL adaptive_centers;
     KNOHWERE_DECLARE_CONFIG(GpuRaftIvfFlatConfig) {
+        KNOWHERE_CONFIG_DECLARE_FIELD(refine_ratio)
+            .set_default(1.0f)
+            .description("search refine_ratio * k results then refine")
+            .for_search();
         KNOWHERE_CONFIG_DECLARE_FIELD(k)
             .set_default(10)
             .description("search for top k similar vector.")
@@ -37,6 +42,7 @@ struct GpuRaftIvfFlatConfig : public IvfFlatConfig {
   auto result = raft_knowhere::raft_knowhere_config{raft_proto::raft_index_kind::ivf_flat};
 
   result.metric_type = cfg.metric_type.value();
+  result.refine_ratio = cfg.refine_ratio.value();
   result.k = cfg.k.value();
   result.nlist = cfg.nlist;
   result.nprobe = cfg.nprobe;

@@ -428,6 +428,10 @@ struct raft_knowhere_index<IndexKind>::impl {
     auto device_distances = device_distances_storage.view();
 
     RAFT_EXPECTS(index_, "Index has not yet been trained");
+    auto dataset_view = device_dataset_storage ?
+      std::make_optional(device_dataset_storage->view()) :
+      std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{};
+
 
     if (device_bitset) {
       raft_index_type::search(
@@ -439,7 +443,7 @@ struct raft_knowhere_index<IndexKind>::impl {
         device_distances,
         config.refine_ratio,
         input_indexing_type{},
-        std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{},  // TODO(wphicks): Enable refinement
+        dataset_view,
         raft::neighbors::filtering::bitset_filter<knowhere_bitset_data_type, knowhere_bitset_indexing_type>{
           device_bitset->view()
         }
@@ -454,7 +458,7 @@ struct raft_knowhere_index<IndexKind>::impl {
         device_distances,
         config.refine_ratio,
         input_indexing_type{},
-        std::optional<raft::device_matrix_view<const data_type, input_indexing_type>>{}  // TODO(wphicks): Enable refinement
+        dataset_view
       );
     }
     raft::copy(res, host_ids, device_ids);
