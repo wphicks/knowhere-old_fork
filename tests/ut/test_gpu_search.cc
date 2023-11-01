@@ -100,6 +100,7 @@ TEST_CASE("Test All GPU Index", "[search]") {
     SECTION("Test Gpu Index Search With Bitset") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
+            // TODO(wphicks): Fix filtering and re-enable
             // make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFPQ, ivfpq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_CAGRA, cagra_gen),
@@ -195,6 +196,7 @@ TEST_CASE("Test All GPU Index", "[search]") {
     SECTION("Test Gpu Index Search Simple Bitset") {
         using std::make_tuple;
         auto [name, gen] = GENERATE_REF(table<std::string, std::function<knowhere::Json()>>({
+             // TODO(wphicks): Fix filtering and re-enable
             // make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFFLAT, ivfflat_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_IVFPQ, ivfpq_gen),
             make_tuple(knowhere::IndexEnum::INDEX_RAFT_CAGRA, cagra_gen),
