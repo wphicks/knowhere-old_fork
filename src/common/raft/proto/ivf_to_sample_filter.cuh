@@ -6,10 +6,7 @@ struct ivf_to_sample_filter {
   const filter_t next_filter_;
 
   ivf_to_sample_filter(const index_t* const* inds_ptrs, const filter_t next_filter)
-    : inds_ptrs_{inds_ptrs}, next_filter_{next_filter}
-  {
-    std::cout << "inds_ptrs: " << inds_ptrs << std::endl;
-  }
+    : inds_ptrs_{inds_ptrs}, next_filter_{next_filter} {}
 
   inline __host__ __device__ bool operator()(
     // query index
