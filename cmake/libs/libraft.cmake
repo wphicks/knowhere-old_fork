@@ -15,8 +15,8 @@
 
 add_definitions(-DKNOWHERE_WITH_RAFT)
 set(RAFT_VERSION "${RAPIDS_VERSION}")
-set(RAFT_FORK "rapidsai")
-set(RAFT_PINNED_TAG "branch-${RAPIDS_VERSION}")
+set(RAFT_FORK "wphicks")
+set(RAFT_PINNED_TAG "bug-ivf_flat_filter")
 
 
 rapids_find_package(CUDAToolkit REQUIRED
