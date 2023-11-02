@@ -171,5 +171,13 @@ KnowhereConfig::SetRaftMemPool(size_t init_size, size_t max_size) {
   raft_knowhere::initialize_raft(config);
 #endif
 }
+void
+KnowhereConfig::SetRaftMemPool() {
+  // Overload for default values
+#ifdef KNOWHERE_WITH_RAFT
+  auto config = raft_knowhere::raft_configuration{};
+  raft_knowhere::initialize_raft(config);
+#endif
+}
 
 }  // namespace knowhere
