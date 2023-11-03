@@ -241,7 +241,7 @@ class Benchmark_float_qps : public Benchmark_knowhere, public ::testing::Test {
  protected:
     const int32_t topk_ = 100;
     const std::vector<float> EXPECTED_RECALLs_ = {0.8, 0.95};
-    const std::vector<int32_t> THREAD_NUMs_ = {8, 12};
+    const std::vector<int32_t> THREAD_NUMs_ = {1, 2, 4, 8};
 
     // IVF index params
     const std::vector<int32_t> NLISTs_ = {1024};
