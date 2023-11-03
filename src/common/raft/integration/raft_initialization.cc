@@ -36,11 +36,15 @@ void initialize_raft(raft_configuration const& config) {
       } else {
         raft::device_resources_manager::set_stream_pools_per_device(config.stream_pools_per_device);
       }
-      if (config.init_mem_pool_size_mb && config.max_mem_pool_size_mb.value_or(1) > 0) {
+      if (config.init_mem_pool_size_mb) {
         raft::device_resources_manager::set_init_mem_pool_size(*(config.init_mem_pool_size_mb) << 20);
       }
-      if (config.max_mem_pool_size_mb.value_or(0) > 0) {
-        raft::device_resources_manager::set_max_mem_pool_size(*(config.max_mem_pool_size_mb) << 20);
+      if (config.max_mem_pool_size_mb) {
+        if (*config.max_mem_pool_size_mb > 0) {
+          raft::device_resources_manager::set_max_mem_pool_size(*(config.max_mem_pool_size_mb) << 20);
+        }
+      } else {
+          raft::device_resources_manager::set_max_mem_pool_size(std::nullopt);
       }
       if (config.max_workspace_size_mb) {
         raft::device_resources_manager::set_workspace_allocation_limit(*(config.max_workspace_size_mb) << 20);
