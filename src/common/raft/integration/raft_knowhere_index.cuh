@@ -26,6 +26,7 @@
 #include <raft/core/device_setter.hpp>
 #include <raft/distance/distance_types.hpp>
 #include <raft/neighbors/sample_filter.cuh>
+#include <raft/neighbors/ivf_pq_types.hpp>
 #include "common/raft/proto/raft_index_kind.hpp"
 #include "common/raft/proto/raft_index.cuh"
 #include "common/raft/integration/raft_knowhere_index.hpp"
@@ -475,6 +476,15 @@ struct raft_knowhere_index<IndexKind>::impl {
         config.refine_ratio,
         input_indexing_type{},
         dataset_view
+      );
+    }
+    if constexpr (index_kind == raft_proto::raft_index_kind::ivf_pq) {
+      thrust::replace(
+        res.get_thrust_policy(),
+        thrust::device_ptr<indexing_type>(device_ids.data_handle()),
+        thrust::device_ptr<indexing_type>(device_ids.data_handle() + output_size),
+        raft::neighbors::ivf_pq::kOutOfBoundsRecord<indexing_type>,
+        indexing_type{-1}
       );
     }
     raft::copy(res, host_ids, device_ids);
