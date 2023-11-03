@@ -78,46 +78,45 @@ class Benchmark_float_qps : public Benchmark_knowhere, public ::testing::Test {
     test_cagra(const knowhere::Json& cfg) {
         auto conf = cfg;
 
-        auto find_smallest_itopk = [&](float expected_recall) -> int32_t {
-            conf[knowhere::meta::TOPK] = topk_;
+        auto find_smallest_max_iters = [&](float expected_recall) -> int32_t {
             auto ds_ptr = knowhere::GenDataSet(nq_, dim_, xq_);
-            auto left = ((int{topk_} + 32 - 1) / 32) * 32;
-            auto right = 128;
-            auto itopk = left;
+            auto left = 32;
+            auto right = 256;
+            auto max_iterations = left;
 
             float recall;
             while (left <= right) {
-                itopk = left + (right - left) / 2;
-                conf[knowhere::indexparam::ITOPK_SIZE] = itopk;
+                max_iterations = left + (right - left) / 2;
+                conf[knowhere::indexparam::MAX_ITERATIONS] = max_iterations;
 
                 auto result = index_.Search(*ds_ptr, conf, nullptr);
                 recall = CalcRecall(result.value()->GetIds(), nq_, topk_);
                 printf(
-                    "[%0.3f s] iterate CAGRA param for recall %.4f: itopk=%d, k=%d, "
+                    "[%0.3f s] iterate CAGRA param for recall %.4f: max_iterations=%d, k=%d, "
                     "R@=%.4f\n",
-                    get_time_diff(), expected_recall, itopk, topk_, recall);
+                    get_time_diff(), expected_recall, max_iterations, topk_, recall);
                 std::fflush(stdout);
                 if (std::abs(recall - expected_recall) <= 0.0001) {
-                    return itopk;
+                    return max_iterations;
                 }
                 if (recall < expected_recall) {
-                    left = itopk + 32;
+                    left = max_iterations + 1;
                 } else {
-                    right = itopk - 32;
+                    right = max_iterations - 1;
                 }
             }
             return left;
         };
 
         for (auto expected_recall : EXPECTED_RECALLs_) {
-            auto itopk = find_smallest_itopk(expected_recall);
-            conf[knowhere::indexparam::ITOPK_SIZE] = itopk;
+            conf[knowhere::indexparam::ITOPK_SIZE] = ((int{topk_} + 32 - 1) / 32) * 32;
             conf[knowhere::meta::TOPK] = topk_;
+            conf[knowhere::indexparam::MAX_ITERATIONS] = find_smallest_max_iters(expected_recall);
 
             printf(
-                "\n[%0.3f s] %s | %s | itopk=%d, k=%d, "
+                "\n[%0.3f s] %s | %s | k=%d, "
                 "R@=%.4f\n",
-                get_time_diff(), ann_test_name_.c_str(), index_type_.c_str(), itopk, topk_,
+                get_time_diff(), ann_test_name_.c_str(), index_type_.c_str(), topk_,
                 expected_recall);
             printf("================================================================================\n");
             for (auto thread_num : THREAD_NUMs_) {
@@ -335,8 +334,10 @@ TEST_F(Benchmark_float_qps, TEST_CAGRA) {
     knowhere::Json conf = cfg_;
     for (auto gd : GRAPH_DEGREE_) {
         conf[knowhere::indexparam::GRAPH_DEGREE] = gd;
+        conf[knowhere::indexparam::INTERMEDIATE_GRAPH_DEGREE] = gd;
+        conf[knowhere::indexparam::MAX_ITERATIONS] = 64;
         std::string index_file_name = get_index_name({gd});
         create_index(index_file_name, conf);
-        test_cagra(cfg_);
+        test_cagra(conf);
     }
 }
