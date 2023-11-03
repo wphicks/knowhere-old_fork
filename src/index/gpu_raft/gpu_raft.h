@@ -22,8 +22,11 @@
 #include <fstream>
 #include <istream>
 #include <numeric>
+#include <thread>
 #include <tuple>
 #include <vector>
+
+#include <nvtx3/nvtx3.hpp>
 
 #include "index/gpu_raft/gpu_raft_cagra_config.h"
 #include "index/gpu_raft/gpu_raft_ivf_flat_config.h"
@@ -105,6 +108,7 @@ struct GpuRaftIndexNode : public IndexNode {
 
   expected<DataSetPtr>
   Search(const DataSet& dataset, const Config& cfg, const BitsetView& bitset) const override {
+    NVTX3_FUNC_RANGE();
     auto result = Status::success;
     auto raft_cfg = raft_knowhere::raft_knowhere_config{};
     auto err_msg = std::string{};
@@ -122,6 +126,7 @@ struct GpuRaftIndexNode : public IndexNode {
         auto rows = dataset.GetRows();
         auto dim = dataset.GetDim();
         auto const* data = reinterpret_cast<float const*>(dataset.GetTensor());
+        auto search_range = nvtx3::scoped_range{"search range"};
         auto search_result = index_.search(
           raft_cfg,
           data,
@@ -131,6 +136,7 @@ struct GpuRaftIndexNode : public IndexNode {
           bitset.byte_size(),
           bitset.size()
         );
+        std::this_thread::yield();
         index_.synchronize();
         return GenResultDataSet(
           rows,
